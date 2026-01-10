@@ -541,13 +541,26 @@ export class TextLayerImpl implements TextLayerInterface {
 			pointer-events: auto;
 			user-select: none;
 			z-index: 10;
+			touch-action: none;
 		`
 
-		// Add event listeners for selection/editing
-		overlay.addEventListener('mousedown', this.#handleMouseDown.bind(this))
-		overlay.addEventListener('mousemove', this.#handleMouseMove.bind(this))
-		overlay.addEventListener('mouseup', this.#handleMouseUp.bind(this))
-		overlay.addEventListener('dblclick', this.#handleDoubleClick.bind(this))
+		// Use unified pointer events for mobile/desktop compatibility
+		overlay.addEventListener('pointerdown', this.#handlePointerDown.bind(this))
+		overlay.addEventListener('pointermove', this.#handlePointerMove.bind(this))
+		overlay.addEventListener('pointerup', this.#handlePointerUp.bind(this))
+		overlay.addEventListener('pointercancel', this.#handlePointerUp.bind(this))
+
+		// Double-tap/click for editing
+		let lastTapTime = 0
+		overlay.addEventListener('pointerup', (e: PointerEvent) => {
+			if (!e.isPrimary) return
+			const now = Date.now()
+			if (now - lastTapTime < 300) {
+				// Double-tap detected
+				this.#handleDoubleTap(e)
+			}
+			lastTapTime = now
+		})
 
 		return overlay
 	}
@@ -729,37 +742,68 @@ export class TextLayerImpl implements TextLayerInterface {
 		}
 	}
 
-	#handleMouseDown(e: MouseEvent): void {
+	#handlePointerDown(e: PointerEvent): void {
+		if (!e.isPrimary) return
 		if (this.#editMode !== 'select') return
 
-		const point = this.#getPointFromEvent(e)
+		e.preventDefault()
+
+		// Capture pointer for reliable tracking
+		if (this.#overlayElement) {
+			this.#overlayElement.setPointerCapture(e.pointerId)
+		}
+
+		const point = this.#getPointFromPointer(e)
 		this.startSelection(this.#currentPageNumber, point)
 	}
 
-	#handleMouseMove(e: MouseEvent): void {
+	#handlePointerMove(e: PointerEvent): void {
+		if (!e.isPrimary) return
 		if (!this.#isSelecting) return
 
-		const point = this.#getPointFromEvent(e)
+		const point = this.#getPointFromPointer(e)
 		this.extendSelection(point)
 	}
 
-	#handleMouseUp(): void {
+	#handlePointerUp(e: PointerEvent): void {
+		if (!e.isPrimary) return
+
+		// Release pointer capture
+		if (this.#overlayElement && e.pointerId !== undefined) {
+			try {
+				this.#overlayElement.releasePointerCapture(e.pointerId)
+			} catch {
+				// Ignore if pointer is not captured
+			}
+		}
+
 		if (this.#isSelecting) {
 			this.endSelection()
 		}
 	}
 
-	#handleDoubleClick(e: MouseEvent): void {
+	#handleDoubleTap(e: PointerEvent): void {
 		if (this.#editMode === 'edit') {
-			const point = this.#getPointFromEvent(e)
+			const point = this.#getPointFromPointer(e)
 			this.startEditing(this.#currentPageNumber, point)
 		} else if (this.#editMode === 'select') {
-			// Double-click to select word
-			const point = this.#getPointFromEvent(e)
+			// Double-tap to select word
+			const point = this.#getPointFromPointer(e)
 			this.#selectWordAtPoint(point)
 		}
 	}
 
+	#getPointFromPointer(e: PointerEvent): Point {
+		const rect = this.#overlayElement?.getBoundingClientRect()
+		if (!rect) return { x: 0, y: 0 }
+
+		return {
+			x: (e.clientX - rect.left) / this.#currentScale,
+			y: (e.clientY - rect.top) / this.#currentScale,
+		}
+	}
+
+	// Legacy method kept for compatibility
 	#getPointFromEvent(e: MouseEvent): Point {
 		const rect = this.#overlayElement?.getBoundingClientRect()
 		if (!rect) return { x: 0, y: 0 }

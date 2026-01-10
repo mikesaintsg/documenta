@@ -1,4 +1,5 @@
 /* Documenta - Showcase Styles */
+/* Mobile-first design - base styles are for mobile, media queries add desktop */
 
 :root {
 	--primary-color: #2563eb;
@@ -10,8 +11,8 @@
 	--text-primary: #1e293b;
 	--text-secondary: #64748b;
 	--border-color: #e2e8f0;
-	--toolbar-height: 56px;
-	--sidebar-width: 200px;
+	--toolbar-height: auto;
+	--min-touch-target: 44px;
 }
 
 * {
@@ -20,71 +21,84 @@
 	padding: 0;
 }
 
+html {
+	/* Prevent iOS Safari bounce scrolling */
+	overflow: hidden;
+	height: 100%;
+}
+
 body {
 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 	background-color: var(--background);
 	color: var(--text-primary);
 	line-height: 1.5;
+	/* Prevent text selection on UI elements for mobile */
+	-webkit-user-select: none;
+	user-select: none;
+	/* Prevent pull-to-refresh */
+	overscroll-behavior: none;
+	height: 100%;
+	overflow: hidden;
 }
 
 #app {
 	display: flex;
 	flex-direction: column;
-	height: 100vh;
+	height: 100%;
+	height: 100dvh; /* Dynamic viewport height for mobile */
 	overflow: hidden;
 }
 
-/* Toolbar */
+/* Toolbar - Mobile first (stacked layout) */
 .toolbar {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	gap: 8px;
-	padding: 8px 16px;
+	gap: 6px;
+	padding: 8px;
 	background-color: var(--surface);
 	border-bottom: 1px solid var(--border-color);
-	height: var(--toolbar-height);
 	flex-shrink: 0;
+}
+
+.toolbar-title {
+	font-weight: 600;
+	font-size: 16px;
+	color: var(--primary-color);
+	flex-basis: 100%;
+	margin-bottom: 4px;
 }
 
 .toolbar-group {
 	display: flex;
 	align-items: center;
 	gap: 4px;
+	flex-wrap: wrap;
 }
 
 .toolbar-divider {
-	width: 1px;
-	height: 24px;
-	background-color: var(--border-color);
-	margin: 0 8px;
+	display: none; /* Hidden on mobile */
 }
 
-.toolbar-title {
-	font-weight: 600;
-	font-size: 18px;
-	color: var(--primary-color);
-	margin-right: auto;
-}
-
-.toolbar-spacer {
-	flex: 1;
-}
-
-/* Buttons */
+/* Buttons - Touch-friendly sizing */
 .btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 6px;
-	padding: 8px 16px;
+	gap: 4px;
+	padding: 10px 14px;
+	min-height: var(--min-touch-target);
+	min-width: var(--min-touch-target);
 	border: 1px solid var(--border-color);
-	border-radius: 6px;
+	border-radius: 8px;
 	background-color: var(--surface);
 	color: var(--text-primary);
 	font-size: 14px;
 	font-weight: 500;
 	cursor: pointer;
 	transition: all 0.15s ease;
+	/* Prevent double-tap zoom on buttons */
+	touch-action: manipulation;
 }
 
 .btn:hover:not(:disabled) {
@@ -92,8 +106,12 @@ body {
 	border-color: var(--primary-color);
 }
 
+.btn:active:not(:disabled) {
+	transform: scale(0.97);
+}
+
 .btn:disabled {
-	opacity: 0.5;
+	opacity: 0.4;
 	cursor: not-allowed;
 }
 
@@ -109,8 +127,8 @@ body {
 }
 
 .btn-icon {
-	padding: 8px;
-	min-width: 36px;
+	padding: 10px;
+	font-size: 16px;
 }
 
 .btn-active {
@@ -119,14 +137,16 @@ body {
 	color: white;
 }
 
-/* Input */
+/* Input - Touch-friendly */
 .input-page {
-	width: 60px;
-	padding: 6px 8px;
+	width: 50px;
+	padding: 8px;
+	min-height: var(--min-touch-target);
 	border: 1px solid var(--border-color);
-	border-radius: 4px;
+	border-radius: 6px;
 	text-align: center;
-	font-size: 14px;
+	font-size: 16px; /* Prevents iOS zoom on focus */
+	touch-action: manipulation;
 }
 
 .page-info {
@@ -137,7 +157,7 @@ body {
 .zoom-value {
 	font-size: 14px;
 	color: var(--text-secondary);
-	min-width: 50px;
+	min-width: 45px;
 	text-align: center;
 }
 
@@ -146,21 +166,28 @@ body {
 	display: flex;
 	flex: 1;
 	overflow: hidden;
+	min-height: 0; /* Critical for flex child scrolling */
 }
 
-/* Viewer Container */
+/* Viewer Container - Touch scrolling */
 .viewer-container {
 	flex: 1;
 	overflow: auto;
 	display: flex;
 	justify-content: center;
-	padding: 24px;
+	padding: 12px;
 	background-color: #525659;
+	/* Enable momentum scrolling on iOS */
+	-webkit-overflow-scrolling: touch;
+	/* Allow pinch-to-zoom on viewer only */
+	touch-action: pan-x pan-y;
 }
 
 .page-canvas {
 	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
 	background-color: white;
+	/* Prevent canvas from being selected */
+	-webkit-touch-callout: none;
 }
 
 /* Page wrapper for text layer overlay */
@@ -184,42 +211,47 @@ body {
 	align-items: center;
 	justify-content: center;
 	text-align: center;
-	padding: 48px;
+	padding: 24px;
 	color: white;
 }
 
 .welcome h2 {
-	font-size: 24px;
-	margin-bottom: 16px;
+	font-size: 20px;
+	margin-bottom: 12px;
 }
 
 .welcome p {
 	color: #94a3b8;
-	margin-bottom: 24px;
+	margin-bottom: 16px;
+	font-size: 14px;
 }
 
 .welcome-features {
-	font-size: 12px;
+	font-size: 11px;
 	color: #64748b;
-	margin-bottom: 16px;
+	margin-bottom: 12px;
 }
 
-/* Status Bar */
+/* Status Bar - Mobile */
 .status-bar {
 	display: flex;
+	flex-direction: column;
 	align-items: center;
-	justify-content: space-between;
-	padding: 8px 16px;
+	gap: 4px;
+	padding: 6px 12px;
 	background-color: var(--surface);
 	border-top: 1px solid var(--border-color);
-	font-size: 12px;
+	font-size: 11px;
 	color: var(--text-secondary);
+	text-align: center;
 }
 
 .status-bar-left {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
 	align-items: center;
-	gap: 16px;
+	gap: 8px;
 }
 
 .status-indicator {
@@ -239,7 +271,7 @@ body {
 	background-color: var(--danger-color);
 }
 
-/* File Input - accessible for mobile */
+/* File Input - Accessible and mobile-friendly */
 .file-input-label {
 	position: absolute;
 	overflow: hidden;
@@ -256,80 +288,103 @@ body {
 	opacity: 0;
 }
 
-/* Toast */
+/* Toast - Mobile optimized */
 .toast {
 	position: fixed;
 	bottom: 80px;
 	left: 50%;
 	transform: translateX(-50%);
-	padding: 12px 24px;
+	padding: 10px 20px;
 	background-color: var(--text-primary);
 	color: white;
 	border-radius: 8px;
-	font-size: 14px;
+	font-size: 13px;
 	opacity: 0;
 	transition: opacity 0.3s ease;
 	pointer-events: none;
+	max-width: 90%;
+	text-align: center;
 }
 
 .toast.visible {
 	opacity: 1;
 }
 
-/* Responsive - Mobile optimized */
-@media (max-width: 768px) {
+/* ============================================================================
+   Desktop/Tablet Styles (min-width: 768px)
+   ============================================================================ */
+@media (min-width: 768px) {
 	.toolbar {
-		flex-wrap: wrap;
-		height: auto;
+		flex-wrap: nowrap;
 		gap: 8px;
-		padding: 12px;
+		padding: 8px 16px;
 	}
 
 	.toolbar-title {
-		width: 100%;
-		margin-bottom: 8px;
+		flex-basis: auto;
+		margin-bottom: 0;
+		margin-right: auto;
+		font-size: 18px;
 	}
 
 	.toolbar-group {
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
 	}
 
-	/* Mobile-friendly touch targets (min 44x44) */
+	.toolbar-divider {
+		display: block;
+		width: 1px;
+		height: 24px;
+		background-color: var(--border-color);
+		margin: 0 8px;
+	}
+
 	.btn {
-		min-height: 44px;
-		min-width: 44px;
-		padding: 10px 14px;
+		padding: 8px 16px;
+		min-height: 36px;
+		min-width: auto;
 	}
 
 	.btn-icon {
-		min-height: 44px;
-		min-width: 44px;
-		font-size: 16px;
+		padding: 8px;
+		min-width: 36px;
 	}
 
 	.input-page {
-		min-height: 44px;
-		min-width: 60px;
-		font-size: 16px;
+		width: 60px;
+		min-height: 36px;
 	}
 
 	.viewer-container {
-		padding: 12px;
+		padding: 24px;
 	}
 
-	/* Hide less important items on mobile */
-	.toolbar-divider {
-		display: none;
+	.welcome {
+		padding: 48px;
+	}
+
+	.welcome h2 {
+		font-size: 24px;
+	}
+
+	.welcome p {
+		font-size: 16px;
 	}
 
 	.status-bar {
-		flex-direction: column;
-		gap: 4px;
-		text-align: center;
+		flex-direction: row;
+		justify-content: space-between;
+		padding: 8px 16px;
+		font-size: 12px;
 	}
 
 	.status-bar-left {
-		flex-direction: column;
-		gap: 4px;
+		flex-wrap: nowrap;
+		gap: 16px;
+	}
+
+	.toast {
+		bottom: 80px;
+		font-size: 14px;
 	}
 }

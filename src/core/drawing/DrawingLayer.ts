@@ -58,13 +58,11 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 	#strokeCompleteListeners: ListenerMap<DrawingStrokeCallback> = new Set()
 	#strokeEraseListeners: ListenerMap<(strokeId: string) => void> = new Set()
 
-	// Bound event handlers for cleanup
-	#boundMouseDown: (e: MouseEvent) => void
-	#boundMouseMove: (e: MouseEvent) => void
-	#boundMouseUp: () => void
-	#boundTouchStart: (e: TouchEvent) => void
-	#boundTouchMove: (e: TouchEvent) => void
-	#boundTouchEnd: () => void
+	// Bound event handlers for cleanup (unified pointer events for mobile/desktop)
+	#boundPointerDown: (e: PointerEvent) => void
+	#boundPointerMove: (e: PointerEvent) => void
+	#boundPointerUp: (e: PointerEvent) => void
+	#boundPointerCancel: (e: PointerEvent) => void
 
 	constructor(document: mupdf.PDFDocument, options: DrawingLayerOptions = {}) {
 		this.#document = document
@@ -89,13 +87,11 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 			this.#strokeEraseListeners.add(options.onStrokeErase)
 		}
 
-		// Bind event handlers
-		this.#boundMouseDown = this.#handleMouseDown.bind(this)
-		this.#boundMouseMove = this.#handleMouseMove.bind(this)
-		this.#boundMouseUp = this.#handleMouseUp.bind(this)
-		this.#boundTouchStart = this.#handleTouchStart.bind(this)
-		this.#boundTouchMove = this.#handleTouchMove.bind(this)
-		this.#boundTouchEnd = this.#handleTouchEnd.bind(this)
+		// Bind unified pointer event handlers (works for both mouse and touch)
+		this.#boundPointerDown = this.#handlePointerDown.bind(this)
+		this.#boundPointerMove = this.#handlePointerMove.bind(this)
+		this.#boundPointerUp = this.#handlePointerUp.bind(this)
+		this.#boundPointerCancel = this.#handlePointerUp.bind(this)
 	}
 
 	// =========================================================================
@@ -272,25 +268,28 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 	#attachEventListeners(): void {
 		if (!this.#canvas) return
 
-		this.#canvas.addEventListener('mousedown', this.#boundMouseDown)
-		this.#canvas.addEventListener('mousemove', this.#boundMouseMove)
-		this.#canvas.addEventListener('mouseup', this.#boundMouseUp)
-		this.#canvas.addEventListener('mouseleave', this.#boundMouseUp)
-		this.#canvas.addEventListener('touchstart', this.#boundTouchStart, { passive: false })
-		this.#canvas.addEventListener('touchmove', this.#boundTouchMove, { passive: false })
-		this.#canvas.addEventListener('touchend', this.#boundTouchEnd)
+		// Use unified pointer events for mobile/desktop compatibility
+		this.#canvas.addEventListener('pointerdown', this.#boundPointerDown)
+		this.#canvas.addEventListener('pointermove', this.#boundPointerMove)
+		this.#canvas.addEventListener('pointerup', this.#boundPointerUp)
+		this.#canvas.addEventListener('pointercancel', this.#boundPointerCancel)
+		this.#canvas.addEventListener('pointerleave', this.#boundPointerUp)
+
+		// Prevent default touch actions to avoid scrolling while drawing
+		this.#canvas.style.touchAction = 'none'
 	}
 
 	#detachEventListeners(): void {
 		if (!this.#canvas) return
 
-		this.#canvas.removeEventListener('mousedown', this.#boundMouseDown)
-		this.#canvas.removeEventListener('mousemove', this.#boundMouseMove)
-		this.#canvas.removeEventListener('mouseup', this.#boundMouseUp)
-		this.#canvas.removeEventListener('mouseleave', this.#boundMouseUp)
-		this.#canvas.removeEventListener('touchstart', this.#boundTouchStart)
-		this.#canvas.removeEventListener('touchmove', this.#boundTouchMove)
-		this.#canvas.removeEventListener('touchend', this.#boundTouchEnd)
+		this.#canvas.removeEventListener('pointerdown', this.#boundPointerDown)
+		this.#canvas.removeEventListener('pointermove', this.#boundPointerMove)
+		this.#canvas.removeEventListener('pointerup', this.#boundPointerUp)
+		this.#canvas.removeEventListener('pointercancel', this.#boundPointerCancel)
+		this.#canvas.removeEventListener('pointerleave', this.#boundPointerUp)
+
+		// Restore default touch action
+		this.#canvas.style.touchAction = ''
 	}
 
 	#updateCursor(): void {
@@ -309,71 +308,52 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 		}
 	}
 
-	#handleMouseDown(e: MouseEvent): void {
+	#handlePointerDown(e: PointerEvent): void {
 		if (!this.#isActive) return
+		// Only handle primary pointer (ignore multi-touch for now)
+		if (!e.isPrimary) return
 		e.preventDefault()
 
-		const point = this.#getPointFromEvent(e)
+		// Capture pointer for reliable tracking
+		if (this.#canvas) {
+			this.#canvas.setPointerCapture(e.pointerId)
+		}
+
+		const point = this.#getPointFromPointer(e)
 		this.#startStroke(point)
 	}
 
-	#handleMouseMove(e: MouseEvent): void {
-		if (!this.#isDrawing) return
+	#handlePointerMove(e: PointerEvent): void {
+		if (!this.#isDrawing || !e.isPrimary) return
 		e.preventDefault()
 
-		const point = this.#getPointFromEvent(e)
+		const point = this.#getPointFromPointer(e)
 		this.#continueStroke(point)
 	}
 
-	#handleMouseUp(): void {
+	#handlePointerUp(e: PointerEvent): void {
 		if (!this.#isDrawing) return
+		if (!e.isPrimary) return
+
+		// Release pointer capture
+		if (this.#canvas && e.pointerId !== undefined) {
+			try {
+				this.#canvas.releasePointerCapture(e.pointerId)
+			} catch {
+				// Ignore if pointer is not captured
+			}
+		}
+
 		this.#endStroke()
 	}
 
-	#handleTouchStart(e: TouchEvent): void {
-		if (!this.#isActive || e.touches.length !== 1) return
-		e.preventDefault()
-
-		const touch = e.touches[0]
-		if (touch) {
-			const point = this.#getPointFromTouch(touch)
-			this.#startStroke(point)
-		}
-	}
-
-	#handleTouchMove(e: TouchEvent): void {
-		if (!this.#isDrawing || e.touches.length !== 1) return
-		e.preventDefault()
-
-		const touch = e.touches[0]
-		if (touch) {
-			const point = this.#getPointFromTouch(touch)
-			this.#continueStroke(point)
-		}
-	}
-
-	#handleTouchEnd(): void {
-		if (!this.#isDrawing) return
-		this.#endStroke()
-	}
-
-	#getPointFromEvent(e: MouseEvent): Point {
+	#getPointFromPointer(e: PointerEvent): Point {
 		const rect = this.#canvas?.getBoundingClientRect()
 		if (!rect) return { x: 0, y: 0 }
 
 		return {
 			x: (e.clientX - rect.left) / this.#currentScale,
 			y: (e.clientY - rect.top) / this.#currentScale,
-		}
-	}
-
-	#getPointFromTouch(touch: Touch): Point {
-		const rect = this.#canvas?.getBoundingClientRect()
-		if (!rect) return { x: 0, y: 0 }
-
-		return {
-			x: (touch.clientX - rect.left) / this.#currentScale,
-			y: (touch.clientY - rect.top) / this.#currentScale,
 		}
 	}
 

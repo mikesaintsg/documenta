@@ -198,6 +198,91 @@ function attachEventListeners(): void {
 
 	// Keyboard shortcuts
 	document.addEventListener('keydown', handleKeyboard)
+
+	// Mobile gestures: Pinch-to-zoom and swipe navigation
+	setupMobileGestures()
+}
+
+// ============================================================================
+// Mobile Gesture Support
+// ============================================================================
+
+function setupMobileGestures(): void {
+	const viewerContainer = document.getElementById('viewer-container')
+	if (!viewerContainer) return
+
+	let initialDistance = 0
+	let initialZoom = 1
+	let touchStartX = 0
+	let touchStartY = 0
+	let isSwiping = false
+
+	viewerContainer.addEventListener('touchstart', (e: TouchEvent) => {
+		if (e.touches.length === 2) {
+			// Pinch gesture start
+			const touch1 = e.touches[0]
+			const touch2 = e.touches[1]
+			if (touch1 && touch2) {
+				initialDistance = Math.hypot(
+					touch2.clientX - touch1.clientX,
+					touch2.clientY - touch1.clientY,
+				)
+				initialZoom = editor?.getZoom() ?? 1
+			}
+		} else if (e.touches.length === 1) {
+			// Potential swipe start
+			const touch = e.touches[0]
+			if (touch) {
+				touchStartX = touch.clientX
+				touchStartY = touch.clientY
+				isSwiping = true
+			}
+		}
+	}, { passive: true })
+
+	viewerContainer.addEventListener('touchmove', (e: TouchEvent) => {
+		if (e.touches.length === 2 && editor) {
+			// Pinch-to-zoom
+			const touch1 = e.touches[0]
+			const touch2 = e.touches[1]
+			if (touch1 && touch2 && initialDistance > 0) {
+				const currentDistance = Math.hypot(
+					touch2.clientX - touch1.clientX,
+					touch2.clientY - touch1.clientY,
+				)
+				const scale = currentDistance / initialDistance
+				const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, initialZoom * scale))
+				editor.setZoom(newZoom)
+			}
+		}
+	}, { passive: true })
+
+	viewerContainer.addEventListener('touchend', (e: TouchEvent) => {
+		if (e.touches.length === 0 && isSwiping && editor?.isLoaded()) {
+			const touch = e.changedTouches[0]
+			if (touch) {
+				const deltaX = touch.clientX - touchStartX
+				const deltaY = touch.clientY - touchStartY
+				const absX = Math.abs(deltaX)
+				const absY = Math.abs(deltaY)
+
+				// Horizontal swipe for page navigation (requires significant horizontal movement)
+				if (absX > 80 && absX > absY * 2) {
+					if (deltaX > 0) {
+						// Swipe right = previous page
+						editor.goToPreviousPage()
+						showToast('Previous page')
+					} else {
+						// Swipe left = next page
+						editor.goToNextPage()
+						showToast('Next page')
+					}
+				}
+			}
+		}
+		isSwiping = false
+		initialDistance = 0
+	}, { passive: true })
 }
 
 // ============================================================================
