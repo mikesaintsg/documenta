@@ -39,7 +39,9 @@ function createUI(): void {
 			<span class="toolbar-title">Documenta</span>
 
 			<div class="toolbar-group">
-				<input type="file" id="file-input" class="file-input" accept=".pdf,application/pdf">
+				<label for="file-input" class="file-input-label">
+					<input type="file" id="file-input" class="file-input" accept=".pdf,application/pdf,application/x-pdf">
+				</label>
 				<button id="btn-open" class="btn btn-primary">Open PDF</button>
 				<button id="btn-save" class="btn" disabled>Save</button>
 				<button id="btn-download" class="btn" disabled>Download</button>

@@ -239,9 +239,21 @@ body {
 	background-color: var(--danger-color);
 }
 
-/* File Input */
+/* File Input - accessible for mobile */
+.file-input-label {
+	position: absolute;
+	overflow: hidden;
+	clip: rect(1px, 1px, 1px, 1px);
+	width: 1px;
+	height: 1px;
+}
+
 .file-input {
-	display: none;
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
 }
 
 /* Toast */
@@ -264,12 +276,13 @@ body {
 	opacity: 1;
 }
 
-/* Responsive */
+/* Responsive - Mobile optimized */
 @media (max-width: 768px) {
 	.toolbar {
 		flex-wrap: wrap;
 		height: auto;
 		gap: 8px;
+		padding: 12px;
 	}
 
 	.toolbar-title {
@@ -279,5 +292,44 @@ body {
 
 	.toolbar-group {
 		flex-wrap: wrap;
+	}
+
+	/* Mobile-friendly touch targets (min 44x44) */
+	.btn {
+		min-height: 44px;
+		min-width: 44px;
+		padding: 10px 14px;
+	}
+
+	.btn-icon {
+		min-height: 44px;
+		min-width: 44px;
+		font-size: 16px;
+	}
+
+	.input-page {
+		min-height: 44px;
+		min-width: 60px;
+		font-size: 16px;
+	}
+
+	.viewer-container {
+		padding: 12px;
+	}
+
+	/* Hide less important items on mobile */
+	.toolbar-divider {
+		display: none;
+	}
+
+	.status-bar {
+		flex-direction: column;
+		gap: 4px;
+		text-align: center;
+	}
+
+	.status-bar-left {
+		flex-direction: column;
+		gap: 4px;
 	}
 }

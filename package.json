@@ -20,7 +20,8 @@
 		"decache": "node -e \"const fs=require('fs');['.eslintcache','node_modules/.vite','node_modules/.vitest','node_modules/.cache'].forEach(p=>{try{fs.rmSync(p,{recursive:true,force:true})}catch{}})\""
 	},
 	"dependencies": {
-		"mupdf": "^1.26.4"
+		"mupdf": "^1.26.4",
+		"tactica": "^0.0.1"
 	},
 	"devDependencies": {
 		"@types/node": "^25.0.5",

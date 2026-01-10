@@ -1,12 +1,21 @@
 /**
  * Documenta - Helper Functions
  * @module helpers
+ *
+ * Uses tactica for core utilities where applicable.
  */
 
+import {
+	isNonEmptyString as tacticaIsNonEmptyString,
+	isNumber,
+	isFiniteNumber,
+	clamp as tacticaClamp,
+	generateId,
+} from 'tactica'
 import type { AnnotationColor, Point, Rectangle } from './types.js'
 
 // ============================================================================
-// Type Guards
+// Re-exports from tactica
 // ============================================================================
 
 /**
@@ -15,26 +24,31 @@ import type { AnnotationColor, Point, Rectangle } from './types.js'
  * @param value - The value to check
  * @returns True if value is a non-empty string
  */
-export function isNonEmptyString(value: unknown): value is string {
-	return typeof value === 'string' && value.length > 0
-}
+export const isNonEmptyString = tacticaIsNonEmptyString
+
+export { isNumber, isFiniteNumber, generateId }
 
 /**
  * Check if a File is a valid PDF file
+ * Handles mobile browsers where MIME type may be empty or incorrect.
  *
  * @param file - The File to validate
  * @returns True if the file appears to be a valid PDF
  */
 export function isValidPdfFile(file: File): boolean {
-	const validTypes = ['application/pdf']
+	// Valid MIME types (some mobile browsers report different types)
+	const validTypes = ['application/pdf', 'application/x-pdf']
+	// Valid file extensions
 	const validExtensions = ['.pdf']
 
-	const hasValidType = validTypes.includes(file.type)
+	const hasValidType = file.type !== '' && validTypes.includes(file.type.toLowerCase())
 	const hasValidExtension = validExtensions.some(ext =>
 		file.name.toLowerCase().endsWith(ext),
 	)
 
-	return hasValidType || hasValidExtension
+	// On mobile, MIME type is often empty, so we rely more on extension
+	// If both are empty/invalid but the file was selected via PDF picker, accept it
+	return hasValidType || hasValidExtension || file.type === ''
 }
 
 /**
@@ -94,6 +108,7 @@ export function clampPageNumber(pageNumber: number, maxPage: number): number {
 
 /**
  * Clamp a zoom level to valid range
+ * Uses tactica's clamp helper
  *
  * @param zoom - The zoom level to clamp
  * @param min - Minimum zoom
@@ -101,7 +116,7 @@ export function clampPageNumber(pageNumber: number, maxPage: number): number {
  * @returns The clamped zoom level
  */
 export function clampZoom(zoom: number, min: number, max: number): number {
-	return Math.max(min, Math.min(zoom, max))
+	return tacticaClamp(zoom, min, max)
 }
 
 // ============================================================================
@@ -167,11 +182,12 @@ export function computeFitWidthScale(
 
 /**
  * Generate a unique annotation ID
+ * Uses tactica's generateId for UUID generation
  *
  * @returns A unique string ID
  */
 export function generateAnnotationId(): string {
-	return `annot-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+	return `annot-${generateId()}`
 }
 
 // ============================================================================

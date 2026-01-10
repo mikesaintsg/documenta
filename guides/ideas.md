@@ -1,8 +1,8 @@
 # Documenta - Browser PDF Editor
 
 **Last Updated:** 2026-01-10
-**Status:** Implementation Complete (with OCR/Text Editing)
-**Runtime Dependency:** mupdf (latest - v1.26.4)
+**Status:** Implementation Complete (with OCR/Text Editing + tactica integration)
+**Runtime Dependencies:** mupdf (v1.26.4), tactica (v0.0.1)
 
 ---
 
@@ -12,7 +12,7 @@
 |-------|-------------|--------|------------|--------------|
 | 1 | Project Setup | ✅ Complete | 100% | package.json, tsconfig.json, vite.config.ts, eslint.config.ts |
 | 2 | Types Definition | ✅ Complete | 100% | src/types.ts |
-| 3 | Helpers & Utilities | ✅ Complete | 100% | src/helpers.ts |
+| 3 | Helpers & Utilities | ✅ Complete | 100% | src/helpers.ts (now uses tactica) |
 | 4 | Constants | ✅ Complete | 100% | src/constants.ts |
 | 5 | Core Implementation | ✅ Complete | 100% | src/core/pdf/ |
 | 6 | Factory Functions | ✅ Complete | 100% | src/factories.ts |
@@ -22,6 +22,7 @@
 | 10 | Documentation | ✅ Complete | 100% | README.md, guides/ |
 | 11 | Text Layer (OCR) | ✅ Complete | 100% | src/core/text/ |
 | 12 | Inline Text Editing | ✅ Complete | 100% | TextLayerInterface |
+| 13 | Tactica Integration | ✅ Complete | 100% | helpers.ts uses tactica, mobile fixes |
 
 ---
 
