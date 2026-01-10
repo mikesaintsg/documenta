@@ -18,6 +18,7 @@ export default defineConfig({
 		},
 		outDir: 'dist',
 		emptyOutDir: true,
+		target: 'esnext',
 	},
 	resolve: {
 		alias: {
