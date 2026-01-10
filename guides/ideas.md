@@ -12,7 +12,7 @@
 |-------|-------------|--------|------------|--------------|
 | 1 | Project Setup | ✅ Complete | 100% | package.json, tsconfig.json, vite.config.ts, eslint.config.ts |
 | 2 | Types Definition | ✅ Complete | 100% | src/types.ts |
-| 3 | Helpers & Utilities | ✅ Complete | 100% | src/helpers.ts (now uses tactica) |
+| 3 | Helpers & Utilities | ✅ Complete | 100% | src/helpers.ts (uses tactica directly) |
 | 4 | Constants | ✅ Complete | 100% | src/constants.ts |
 | 5 | Core Implementation | ✅ Complete | 100% | src/core/pdf/ |
 | 6 | Factory Functions | ✅ Complete | 100% | src/factories.ts |
@@ -22,7 +22,10 @@
 | 10 | Documentation | ✅ Complete | 100% | README.md, guides/ |
 | 11 | Text Layer (OCR) | ✅ Complete | 100% | src/core/text/ |
 | 12 | Inline Text Editing | ✅ Complete | 100% | TextLayerInterface |
-| 13 | Tactica Integration | ✅ Complete | 100% | helpers.ts uses tactica, mobile fixes |
+| 13 | Tactica Integration | ✅ Complete | 100% | Direct tactica imports, no re-exports |
+| 14 | Drawing Layer (Tier 3) | ✅ Complete | 100% | src/core/drawing/ |
+| 15 | Page Management (Tier 3) | ✅ Complete | 100% | PdfEditorInterface methods |
+| 16 | Form Layer (Tier 3) | ✅ Complete | 100% | src/core/form/ |
 
 ---
 
@@ -202,10 +205,10 @@ Implement OCR and inline text editing for PDF documents.
 - Drag and drop to reorder
 
 **Acceptance Criteria:**
-- [ ] Can add blank pages
-- [ ] Can delete pages
-- [ ] Can rotate pages
-- [ ] Can reorder pages via drag/drop
+- [x] Can add blank pages
+- [x] Can delete pages
+- [x] Can rotate pages
+- [x] Can reorder pages via drag/drop
 
 ### 3.2 Drawing Annotations
 
@@ -217,10 +220,10 @@ Implement OCR and inline text editing for PDF documents.
 - Eraser functionality
 
 **Acceptance Criteria:**
-- [ ] Can draw freehand
-- [ ] Configurable pen settings
-- [ ] Eraser works correctly
-- [ ] Drawings persist after save
+- [x] Can draw freehand
+- [x] Configurable pen settings
+- [x] Eraser works correctly
+- [x] Drawings persist after save
 
 ### 3.3 Form Filling
 
@@ -233,10 +236,10 @@ Implement OCR and inline text editing for PDF documents.
 - Flatten forms on save
 
 **Acceptance Criteria:**
-- [ ] Detects form fields
-- [ ] Can fill text fields
-- [ ] Can toggle checkboxes/radios
-- [ ] Forms flatten correctly on save
+- [x] Detects form fields
+- [x] Can fill text fields
+- [x] Can toggle checkboxes/radios
+- [x] Forms flatten correctly on save
 
 ---
 

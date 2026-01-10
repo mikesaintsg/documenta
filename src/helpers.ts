@@ -2,61 +2,12 @@
  * Documenta - Helper Functions
  * @module helpers
  *
- * Uses tactica for core utilities where applicable.
+ * Project-specific helpers for PDF editing.
+ * For general utilities, import directly from 'tactica'.
  */
 
-import {
-	isNonEmptyString as tacticaIsNonEmptyString,
-	isNumber,
-	isFiniteNumber,
-	isBoolean,
-	isDefined,
-	isObject,
-	isArray,
-	isNonEmptyArray,
-	clamp as tacticaClamp,
-	generateId,
-	distance,
-	distanceSquared,
-	pointInRectangle,
-	rectsOverlap,
-	degToRad,
-	radToDeg,
-	lerp,
-	now,
-} from 'tactica'
+import { clamp, generateId } from 'tactica'
 import type { AnnotationColor, Point, Rectangle } from './types.js'
-
-// ============================================================================
-// Re-exports from tactica
-// ============================================================================
-
-/**
- * Check if a value is a non-empty string
- *
- * @param value - The value to check
- * @returns True if value is a non-empty string
- */
-export const isNonEmptyString = tacticaIsNonEmptyString
-
-export {
-	isNumber,
-	isFiniteNumber,
-	isBoolean,
-	isDefined,
-	isObject,
-	isArray,
-	isNonEmptyArray,
-	generateId,
-	distance,
-	distanceSquared,
-	pointInRectangle,
-	rectsOverlap,
-	degToRad,
-	radToDeg,
-	lerp,
-	now,
-}
 
 /**
  * Check if a File is a valid PDF file
@@ -146,7 +97,7 @@ export function clampPageNumber(pageNumber: number, maxPage: number): number {
  * @returns The clamped zoom level
  */
 export function clampZoom(zoom: number, min: number, max: number): number {
-	return tacticaClamp(zoom, min, max)
+	return clamp(zoom, min, max)
 }
 
 // ============================================================================

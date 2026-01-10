@@ -17,7 +17,8 @@ import type {
 	Point,
 	Unsubscribe,
 } from '../../types.js'
-import { generateAnnotationId, colorToMupdfArray, distanceSquared } from '../../helpers.js'
+import { generateAnnotationId, colorToMupdfArray } from '../../helpers.js'
+import { distanceSquared } from 'tactica'
 import {
 	COLOR_BLACK,
 	COLOR_YELLOW,
