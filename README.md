@@ -1,20 +1,41 @@
 # Documenta
 
-A browser-only PDF editor built with [mupdf](https://www.npmjs.com/package/mupdf) and native browser APIs.
+A browser-only PDF editor built with [mupdf](https://www.npmjs.com/package/mupdf), [tactica](https://www.npmjs.com/package/tactica), and native browser APIs.
 
 ![Documenta PDF Editor](https://github.com/user-attachments/assets/06e01559-3a72-4b63-a297-20b6b7c32d66)
 
 ## Features
 
+### Core Features
 - 📄 **PDF Loading** - Open PDF files via File API or File System Access API
 - 🖼️ **PDF Rendering** - High-quality page rendering to canvas
 - 🔍 **Zoom Controls** - Zoom in/out, fit to width, fit to page
 - 📑 **Navigation** - Page navigation with keyboard shortcuts
 - 💾 **Save/Download** - Save changes using File System Access API or download
 - ✏️ **Annotations** - Add text, highlight, ink, and shape annotations
+
+### Text Features
 - 📝 **Text Selection** - Select and copy text from PDFs (overlay strategy)
 - ✍️ **Inline Text Editing** - Edit PDF text in place with overlay editor
 - 🔎 **Text Search** - Search for text across all pages
+
+### Drawing Features
+- 🖊️ **Pen Tool** - Freehand drawing on PDFs
+- 🖍️ **Highlighter** - Semi-transparent highlighting
+- 🧽 **Eraser** - Remove drawing strokes
+- ↩️ **Undo/Redo** - Undo and redo drawing actions
+
+### Page Management
+- ➕ **Add Pages** - Insert blank pages at any position
+- 🗑️ **Delete Pages** - Remove pages from the document
+- 🔄 **Rotate Pages** - Rotate pages 90°, 180°, 270°
+
+### Form Filling
+- 📋 **Form Detection** - Automatically detect PDF forms
+- ✍️ **Text Fields** - Fill text input fields
+- ☑️ **Checkboxes** - Toggle checkbox fields
+- 🔘 **Radio Buttons** - Select radio button options
+- 📋 **Dropdowns** - Select from dropdown options
 
 ## Installation
 

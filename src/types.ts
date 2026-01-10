@@ -509,6 +509,94 @@ export interface PdfEditorInterface extends PdfEditorHooksInterface {
 	searchText(query: string): readonly { pageNumber: number; bounds: Rectangle }[]
 
 	// -------------------------------------------------------------------------
+	// Page Management (Tier 3)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Add a blank page to the document
+	 *
+	 * @param afterPage - Insert after this page number (0 = insert at beginning)
+	 * @param width - Page width in points (default: 612 for letter)
+	 * @param height - Page height in points (default: 792 for letter)
+	 * @returns The new page number
+	 */
+	addBlankPage(afterPage?: number, width?: number, height?: number): number
+
+	/**
+	 * Delete a page from the document
+	 *
+	 * @param pageNumber - The page number to delete (1-indexed)
+	 */
+	deletePage(pageNumber: number): void
+
+	/**
+	 * Rotate a page
+	 *
+	 * @param pageNumber - The page number to rotate (1-indexed)
+	 * @param rotation - Rotation in degrees (0, 90, 180, 270)
+	 */
+	rotatePage(pageNumber: number, rotation: PageRotation): void
+
+	/**
+	 * Get the rotation of a page
+	 *
+	 * @param pageNumber - The page number (1-indexed)
+	 * @returns Current rotation in degrees
+	 */
+	getPageRotation(pageNumber: number): PageRotation
+
+	/**
+	 * Move a page to a new position
+	 *
+	 * @param fromPage - The page number to move
+	 * @param toPage - The destination position
+	 */
+	movePage(fromPage: number, toPage: number): void
+
+	// -------------------------------------------------------------------------
+	// Drawing Layer (Tier 3)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Get the drawing layer interface
+	 *
+	 * @returns The drawing layer interface, or null if not available
+	 */
+	getDrawingLayer(): DrawingLayerInterface | null
+
+	/**
+	 * Enable or disable drawing mode
+	 *
+	 * @param enabled - Whether to enable drawing
+	 */
+	setDrawingEnabled(enabled: boolean): void
+
+	/**
+	 * Check if drawing mode is enabled
+	 *
+	 * @returns Whether drawing is enabled
+	 */
+	isDrawingEnabled(): boolean
+
+	// -------------------------------------------------------------------------
+	// Form Filling (Tier 3)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Get the form layer interface
+	 *
+	 * @returns The form layer interface, or null if not available
+	 */
+	getFormLayer(): FormLayerInterface | null
+
+	/**
+	 * Check if document has fillable form fields
+	 *
+	 * @returns Whether the document has form fields
+	 */
+	hasFormFields(): boolean
+
+	// -------------------------------------------------------------------------
 	// Lifecycle
 	// -------------------------------------------------------------------------
 
@@ -807,5 +895,230 @@ export interface TextLayerInterface extends TextLayerHooksInterface {
 	// -------------------------------------------------------------------------
 
 	/** Destroy the text layer and release resources */
+	destroy(): void
+}
+
+// ============================================================================
+// Page Management Types (Tier 3)
+// ============================================================================
+
+/** Page rotation in degrees (clockwise) */
+export type PageRotation = 0 | 90 | 180 | 270
+
+/** Page size preset */
+export type PageSizePreset = 'letter' | 'a4' | 'legal' | 'custom'
+
+/** Page size dimensions */
+export interface PageSize {
+	readonly width: number
+	readonly height: number
+}
+
+/** Standard page sizes in points (1/72 inch) */
+export interface StandardPageSizes {
+	readonly letter: PageSize
+	readonly a4: PageSize
+	readonly legal: PageSize
+}
+
+// ============================================================================
+// Drawing Types (Tier 3)
+// ============================================================================
+
+/** Drawing tool type */
+export type DrawingTool = 'pen' | 'highlighter' | 'eraser'
+
+/** Drawing stroke data */
+export interface DrawingStroke {
+	readonly id: string
+	readonly pageNumber: number
+	readonly tool: DrawingTool
+	readonly points: readonly Point[]
+	readonly color: AnnotationColor
+	readonly width: number
+	readonly opacity: number
+	readonly timestamp: Date
+}
+
+/** Drawing layer state */
+export interface DrawingState {
+	readonly isActive: boolean
+	readonly currentTool: DrawingTool
+	readonly strokeColor: AnnotationColor
+	readonly strokeWidth: number
+	readonly opacity: number
+}
+
+/** Callback for drawing stroke events */
+export type DrawingStrokeCallback = (stroke: DrawingStroke) => void
+
+/** Drawing layer hooks */
+export interface DrawingLayerHooksInterface {
+	/** Subscribe to stroke complete events */
+	onStrokeComplete(callback: DrawingStrokeCallback): Unsubscribe
+	/** Subscribe to stroke erase events */
+	onStrokeErase(callback: (strokeId: string) => void): Unsubscribe
+}
+
+/** Drawing layer options */
+export interface DrawingLayerOptions {
+	readonly defaultTool?: DrawingTool
+	readonly defaultColor?: AnnotationColor
+	readonly defaultWidth?: number
+	readonly defaultOpacity?: number
+	readonly onStrokeComplete?: DrawingStrokeCallback
+	readonly onStrokeErase?: (strokeId: string) => void
+}
+
+/** Drawing layer interface */
+export interface DrawingLayerInterface extends DrawingLayerHooksInterface {
+	/** Get current drawing state */
+	getState(): DrawingState
+
+	/** Check if drawing is active */
+	isActive(): boolean
+
+	/** Set drawing tool */
+	setTool(tool: DrawingTool): void
+
+	/** Set stroke color */
+	setColor(color: AnnotationColor): void
+
+	/** Set stroke width */
+	setWidth(width: number): void
+
+	/** Set stroke opacity */
+	setOpacity(opacity: number): void
+
+	/** Start drawing mode */
+	activate(): void
+
+	/** Stop drawing mode */
+	deactivate(): void
+
+	/** Clear all strokes on a page */
+	clearPage(pageNumber: number): void
+
+	/** Get all strokes on a page */
+	getStrokes(pageNumber: number): readonly DrawingStroke[]
+
+	/** Undo last stroke */
+	undo(): void
+
+	/** Redo last undone stroke */
+	redo(): void
+
+	/** Render drawing layer */
+	render(pageNumber: number, canvas: HTMLCanvasElement, scale: number): void
+
+	/** Destroy and cleanup */
+	destroy(): void
+}
+
+// ============================================================================
+// Form Field Types (Tier 3)
+// ============================================================================
+
+/** Form field type */
+export type FormFieldType = 'text' | 'checkbox' | 'radio' | 'dropdown' | 'signature' | 'button'
+
+/** Base form field interface */
+export interface FormField {
+	readonly id: string
+	readonly pageNumber: number
+	readonly name: string
+	readonly type: FormFieldType
+	readonly bounds: Rectangle
+	readonly value: string
+	readonly isReadOnly: boolean
+	readonly isRequired: boolean
+}
+
+/** Text form field */
+export interface TextFormField extends FormField {
+	readonly type: 'text'
+	readonly maxLength: number | undefined
+	readonly isMultiline: boolean
+	readonly isPassword: boolean
+}
+
+/** Checkbox form field */
+export interface CheckboxFormField extends FormField {
+	readonly type: 'checkbox'
+	readonly isChecked: boolean
+}
+
+/** Radio button form field */
+export interface RadioFormField extends FormField {
+	readonly type: 'radio'
+	readonly groupName: string
+	readonly isSelected: boolean
+}
+
+/** Dropdown form field */
+export interface DropdownFormField extends FormField {
+	readonly type: 'dropdown'
+	readonly options: readonly string[]
+	readonly selectedIndex: number
+}
+
+/** Union of all form field types */
+export type AnyFormField = TextFormField | CheckboxFormField | RadioFormField | DropdownFormField
+
+/** Callback for form field change events */
+export type FormFieldChangeCallback = (field: AnyFormField, newValue: string | boolean) => void
+
+/** Form layer hooks */
+export interface FormLayerHooksInterface {
+	/** Subscribe to field change events */
+	onFieldChange(callback: FormFieldChangeCallback): Unsubscribe
+	/** Subscribe to form submit events */
+	onFormSubmit(callback: () => void): Unsubscribe
+}
+
+/** Form layer options */
+export interface FormLayerOptions {
+	readonly highlightFields?: boolean
+	readonly highlightColor?: AnnotationColor
+	readonly onFieldChange?: FormFieldChangeCallback
+	readonly onFormSubmit?: () => void
+}
+
+/** Form layer interface */
+export interface FormLayerInterface extends FormLayerHooksInterface {
+	/** Check if document has form fields */
+	hasFormFields(): boolean
+
+	/** Get all form fields in the document */
+	getAllFields(): readonly AnyFormField[]
+
+	/** Get form fields on a specific page */
+	getFieldsOnPage(pageNumber: number): readonly AnyFormField[]
+
+	/** Get form field by name */
+	getFieldByName(name: string): AnyFormField | undefined
+
+	/** Set text field value */
+	setFieldValue(fieldId: string, value: string): void
+
+	/** Set checkbox/radio checked state */
+	setFieldChecked(fieldId: string, checked: boolean): void
+
+	/** Set dropdown selection */
+	setFieldSelection(fieldId: string, optionIndex: number): void
+
+	/** Highlight form fields */
+	setHighlightFields(enabled: boolean): void
+
+	/** Flatten form (make fields non-editable) */
+	flattenForm(): void
+
+	/** Reset all fields to default values */
+	resetForm(): void
+
+	/** Render form field overlays */
+	render(pageNumber: number, container: HTMLElement, scale: number): void
+
+	/** Destroy and cleanup */
 	destroy(): void
 }

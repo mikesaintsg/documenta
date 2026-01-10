@@ -73,6 +73,22 @@ function createUI(): void {
 				<button id="btn-mode-edit" class="btn btn-icon" disabled title="Text Edit Mode">✏️</button>
 				<button id="btn-search" class="btn" disabled>Search</button>
 			</div>
+
+			<div class="toolbar-divider"></div>
+
+			<div class="toolbar-group">
+				<button id="btn-draw-pen" class="btn btn-icon" disabled title="Pen Tool">🖊️</button>
+				<button id="btn-draw-highlight" class="btn btn-icon" disabled title="Highlighter">🖍️</button>
+				<button id="btn-draw-eraser" class="btn btn-icon" disabled title="Eraser">🧽</button>
+			</div>
+
+			<div class="toolbar-divider"></div>
+
+			<div class="toolbar-group">
+				<button id="btn-add-page" class="btn btn-icon" disabled title="Add Blank Page">➕</button>
+				<button id="btn-delete-page" class="btn btn-icon" disabled title="Delete Page">🗑️</button>
+				<button id="btn-rotate-page" class="btn btn-icon" disabled title="Rotate Page">🔄</button>
+			</div>
 		</div>
 
 		<div class="main-content">
@@ -80,7 +96,7 @@ function createUI(): void {
 				<div id="welcome" class="welcome">
 					<h2>Welcome to Documenta</h2>
 					<p>Open a PDF file to get started</p>
-					<p class="welcome-features">Features: Text Selection, Inline Editing, Search</p>
+					<p class="welcome-features">Features: Text Selection, Inline Editing, Search, Drawing, Page Management, Form Filling</p>
 					<button id="btn-open-welcome" class="btn btn-primary">Open PDF</button>
 				</div>
 				<div id="page-wrapper" class="page-wrapper" style="display: none;">
@@ -96,6 +112,7 @@ function createUI(): void {
 					<span id="status-dot" class="status-dot" style="display: none;"></span>
 					<span id="status-saved"></span>
 				</span>
+				<span id="status-form" class="status-form"></span>
 			</div>
 			<span id="status-fs-api">${hasFileSystemAccess() ? 'File System Access API available' : 'Using fallback download'}</span>
 		</div>
@@ -160,6 +177,24 @@ function attachEventListeners(): void {
 	btnModeSelect.addEventListener('click', handleSelectMode)
 	btnModeEdit.addEventListener('click', handleEditMode)
 	btnSearch.addEventListener('click', handleSearch)
+
+	// Drawing tools (Tier 3)
+	const btnDrawPen = document.getElementById('btn-draw-pen') as HTMLButtonElement
+	const btnDrawHighlight = document.getElementById('btn-draw-highlight') as HTMLButtonElement
+	const btnDrawEraser = document.getElementById('btn-draw-eraser') as HTMLButtonElement
+
+	btnDrawPen.addEventListener('click', handlePenTool)
+	btnDrawHighlight.addEventListener('click', handleHighlightTool)
+	btnDrawEraser.addEventListener('click', handleEraserTool)
+
+	// Page management (Tier 3)
+	const btnAddPage = document.getElementById('btn-add-page') as HTMLButtonElement
+	const btnDeletePage = document.getElementById('btn-delete-page') as HTMLButtonElement
+	const btnRotatePage = document.getElementById('btn-rotate-page') as HTMLButtonElement
+
+	btnAddPage.addEventListener('click', handleAddPage)
+	btnDeletePage.addEventListener('click', handleDeletePage)
+	btnRotatePage.addEventListener('click', handleRotatePage)
 
 	// Keyboard shortcuts
 	document.addEventListener('keydown', handleKeyboard)
@@ -228,7 +263,14 @@ function handleDocumentLoad(fileName: string, pageCount: number): void {
 		updateModeButtons('select')
 	}
 
-	showToast(`Loaded: ${fileName} (${pageCount} pages)`)
+	// Check for form fields (Tier 3)
+	if (editor?.hasFormFields()) {
+		updateFormStatus(true)
+		showToast(`Loaded: ${fileName} (${pageCount} pages) - Form fields detected`)
+	} else {
+		updateFormStatus(false)
+		showToast(`Loaded: ${fileName} (${pageCount} pages)`)
+	}
 }
 
 function handlePageChange(pageNumber: number): void {
@@ -399,6 +441,13 @@ function updateControlsEnabled(enabled: boolean): void {
 		'btn-mode-select',
 		'btn-mode-edit',
 		'btn-search',
+		// Tier 3 controls
+		'btn-draw-pen',
+		'btn-draw-highlight',
+		'btn-draw-eraser',
+		'btn-add-page',
+		'btn-delete-page',
+		'btn-rotate-page',
 	]
 
 	for (const id of controls) {
@@ -455,6 +504,26 @@ function updateSavedStatus(saved: boolean): void {
 	statusSaved.textContent = saved ? 'Saved' : 'Unsaved changes'
 }
 
+function updateFormStatus(hasForm: boolean): void {
+	const statusForm = document.getElementById('status-form') as HTMLSpanElement
+	if (hasForm) {
+		statusForm.textContent = '📋 Fillable form'
+		statusForm.style.color = '#48bb78'
+	} else {
+		statusForm.textContent = ''
+	}
+}
+
+function updateDrawingButtons(activeTool: 'pen' | 'highlighter' | 'eraser' | 'none'): void {
+	const btnPen = document.getElementById('btn-draw-pen') as HTMLButtonElement
+	const btnHighlight = document.getElementById('btn-draw-highlight') as HTMLButtonElement
+	const btnEraser = document.getElementById('btn-draw-eraser') as HTMLButtonElement
+
+	btnPen.classList.toggle('btn-active', activeTool === 'pen')
+	btnHighlight.classList.toggle('btn-active', activeTool === 'highlighter')
+	btnEraser.classList.toggle('btn-active', activeTool === 'eraser')
+}
+
 function showToast(message: string): void {
 	const toast = document.getElementById('toast') as HTMLElement
 
@@ -469,6 +538,109 @@ function showToast(message: string): void {
 		toast.classList.remove('visible')
 		toastTimeout = null
 	}, 3000)
+}
+
+// ============================================================================
+// Drawing Handlers (Tier 3)
+// ============================================================================
+
+function handlePenTool(): void {
+	if (!editor) return
+	const drawingLayer = editor.getDrawingLayer()
+	if (drawingLayer) {
+		const isActive = drawingLayer.isActive() && drawingLayer.getState().currentTool === 'pen'
+		if (isActive) {
+			editor.setDrawingEnabled(false)
+			updateDrawingButtons('none')
+			showToast('Drawing mode disabled')
+		} else {
+			editor.setDrawingEnabled(true)
+			drawingLayer.setTool('pen')
+			updateDrawingButtons('pen')
+			showToast('Pen tool - draw on the PDF')
+		}
+	}
+}
+
+function handleHighlightTool(): void {
+	if (!editor) return
+	const drawingLayer = editor.getDrawingLayer()
+	if (drawingLayer) {
+		const isActive = drawingLayer.isActive() && drawingLayer.getState().currentTool === 'highlighter'
+		if (isActive) {
+			editor.setDrawingEnabled(false)
+			updateDrawingButtons('none')
+			showToast('Drawing mode disabled')
+		} else {
+			editor.setDrawingEnabled(true)
+			drawingLayer.setTool('highlighter')
+			updateDrawingButtons('highlighter')
+			showToast('Highlighter - highlight on the PDF')
+		}
+	}
+}
+
+function handleEraserTool(): void {
+	if (!editor) return
+	const drawingLayer = editor.getDrawingLayer()
+	if (drawingLayer) {
+		const isActive = drawingLayer.isActive() && drawingLayer.getState().currentTool === 'eraser'
+		if (isActive) {
+			editor.setDrawingEnabled(false)
+			updateDrawingButtons('none')
+			showToast('Drawing mode disabled')
+		} else {
+			editor.setDrawingEnabled(true)
+			drawingLayer.setTool('eraser')
+			updateDrawingButtons('eraser')
+			showToast('Eraser - remove strokes')
+		}
+	}
+}
+
+// ============================================================================
+// Page Management Handlers (Tier 3)
+// ============================================================================
+
+function handleAddPage(): void {
+	if (!editor) return
+	const currentPage = editor.getCurrentPage()
+	const newPage = editor.addBlankPage(currentPage)
+	if (newPage > 0) {
+		editor.goToPage(newPage)
+		updatePageInfo(newPage, editor.getPageCount())
+		showToast(`Added blank page at position ${newPage}`)
+	}
+}
+
+function handleDeletePage(): void {
+	if (!editor) return
+	const pageCount = editor.getPageCount()
+	if (pageCount <= 1) {
+		showToast('Cannot delete the only page')
+		return
+	}
+
+	const currentPage = editor.getCurrentPage()
+	const confirmed = confirm(`Delete page ${currentPage}?`)
+	if (confirmed) {
+		editor.deletePage(currentPage)
+		updatePageInfo(editor.getCurrentPage(), editor.getPageCount())
+		renderCurrentPage()
+		showToast(`Page ${currentPage} deleted`)
+	}
+}
+
+function handleRotatePage(): void {
+	if (!editor) return
+	const currentPage = editor.getCurrentPage()
+	const currentRotation = editor.getPageRotation(currentPage)
+	const rotations = [0, 90, 180, 270] as const
+	const currentIndex = rotations.indexOf(currentRotation)
+	const nextRotation = rotations[(currentIndex + 1) % 4] ?? 0
+	editor.rotatePage(currentPage, nextRotation)
+	renderCurrentPage()
+	showToast(`Page rotated to ${nextRotation}°`)
 }
 
 // ============================================================================

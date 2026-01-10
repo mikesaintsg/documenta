@@ -9,8 +9,21 @@ import {
 	isNonEmptyString as tacticaIsNonEmptyString,
 	isNumber,
 	isFiniteNumber,
+	isBoolean,
+	isDefined,
+	isObject,
+	isArray,
+	isNonEmptyArray,
 	clamp as tacticaClamp,
 	generateId,
+	distance,
+	distanceSquared,
+	pointInRectangle,
+	rectsOverlap,
+	degToRad,
+	radToDeg,
+	lerp,
+	now,
 } from 'tactica'
 import type { AnnotationColor, Point, Rectangle } from './types.js'
 
@@ -26,7 +39,24 @@ import type { AnnotationColor, Point, Rectangle } from './types.js'
  */
 export const isNonEmptyString = tacticaIsNonEmptyString
 
-export { isNumber, isFiniteNumber, generateId }
+export {
+	isNumber,
+	isFiniteNumber,
+	isBoolean,
+	isDefined,
+	isObject,
+	isArray,
+	isNonEmptyArray,
+	generateId,
+	distance,
+	distanceSquared,
+	pointInRectangle,
+	rectsOverlap,
+	degToRad,
+	radToDeg,
+	lerp,
+	now,
+}
 
 /**
  * Check if a File is a valid PDF file
