@@ -503,9 +503,24 @@ function renderCurrentPage(): void {
 	if (!editor || !editor.isLoaded()) return
 
 	const canvas = document.getElementById('page-canvas') as HTMLCanvasElement
+	const pageWrapper = document.getElementById('page-wrapper') as HTMLDivElement
 	const pageNumber = editor.getCurrentPage()
+	const zoom = editor.getZoom()
 
+	// Render the PDF page to canvas
 	editor.renderPage(pageNumber, canvas)
+
+	// Render text layer overlay (for text selection and inline editing)
+	const textLayer = editor.getTextLayer()
+	if (textLayer) {
+		textLayer.render(pageNumber, pageWrapper, zoom)
+	}
+
+	// Render drawing layer (attach event listeners to canvas for drawing)
+	const drawingLayer = editor.getDrawingLayer()
+	if (drawingLayer) {
+		drawingLayer.render(pageNumber, canvas, zoom)
+	}
 }
 
 // ============================================================================
