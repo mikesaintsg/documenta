@@ -101,10 +101,10 @@ Implement OCR and inline text editing for PDF documents.
 - Load PDF bytes into mupdf Document
 
 **Acceptance Criteria:**
-- [ ] Can load PDF from file input
-- [ ] Can load PDF using File System Access API
-- [ ] Handles loading errors gracefully
-- [ ] Validates file type before processing
+- [x] Can load PDF from file input
+- [x] Can load PDF using File System Access API
+- [x] Handles loading errors gracefully
+- [x] Validates file type before processing
 
 ### 1.2 PDF Page Rendering
 
@@ -116,10 +116,10 @@ Implement OCR and inline text editing for PDF documents.
 - Support different zoom levels
 
 **Acceptance Criteria:**
-- [ ] Renders PDF page to canvas
-- [ ] Supports zoom in/out
-- [ ] Maintains aspect ratio
-- [ ] Handles multi-page documents
+- [x] Renders PDF page to canvas
+- [x] Supports zoom in/out
+- [x] Maintains aspect ratio
+- [x] Handles multi-page documents
 
 ### 1.3 PDF Navigation
 
@@ -131,10 +131,10 @@ Implement OCR and inline text editing for PDF documents.
 - Page thumbnails sidebar
 
 **Acceptance Criteria:**
-- [ ] Previous/next page buttons work
-- [ ] Can jump to any page by number
-- [ ] Current page indicator
-- [ ] Keyboard navigation support
+- [x] Previous/next page buttons work
+- [x] Can jump to any page by number
+- [x] Current page indicator
+- [x] Keyboard navigation support
 
 ---
 
@@ -150,10 +150,10 @@ Implement OCR and inline text editing for PDF documents.
 - Support "Save As" functionality
 
 **Acceptance Criteria:**
-- [ ] Can save PDF to local file system
-- [ ] Fallback download works in older browsers
-- [ ] Preserves all modifications
-- [ ] Shows save confirmation
+- [x] Can save PDF to local file system
+- [x] Fallback download works in older browsers
+- [x] Preserves all modifications
+- [x] Shows save confirmation
 
 ### 2.2 Text Annotations
 
@@ -166,11 +166,11 @@ Implement OCR and inline text editing for PDF documents.
 - Delete annotations
 
 **Acceptance Criteria:**
-- [ ] Can add text annotations
-- [ ] Can edit existing annotations
-- [ ] Can move annotations
-- [ ] Can delete annotations
-- [ ] Annotations persist after save
+- [x] Can add text annotations
+- [x] Can edit existing annotations
+- [x] Can move annotations
+- [x] Can delete annotations
+- [x] Annotations persist after save
 
 ### 2.3 Highlight Annotations
 
@@ -182,10 +182,10 @@ Implement OCR and inline text editing for PDF documents.
 - Remove highlights
 
 **Acceptance Criteria:**
-- [ ] Can highlight selected text
-- [ ] Multiple color options
-- [ ] Can remove highlights
-- [ ] Highlights persist after save
+- [x] Can highlight selected text
+- [x] Multiple color options
+- [x] Can remove highlights
+- [x] Highlights persist after save
 
 ---
 
