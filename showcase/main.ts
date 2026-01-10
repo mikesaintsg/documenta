@@ -20,8 +20,9 @@ import type { PdfEditorInterface } from '~/src/types.js'
 
 let editor: PdfEditorInterface | null = null
 let toastTimeout: ReturnType<typeof setTimeout> | null = null
-/** Current mode: 'pan' | 'text-select' | 'text-edit' | 'draw-pen' | 'draw-highlighter' | 'draw-eraser' */
-let currentMode: string = 'pan'
+/** Current mode - only one mode can be active at a time */
+type EditorMode = 'pan' | 'text-select' | 'text-edit' | 'draw-pen' | 'draw-highlighter' | 'draw-eraser'
+let currentMode: EditorMode = 'pan'
 let isMenuOpen = false
 
 // ============================================================================
@@ -573,32 +574,31 @@ function handleSearch(): void {
  * - 'draw-highlighter': Highlighter drawing tool
  * - 'draw-eraser': Eraser tool
  */
-function setMode(mode: string): void {
+function setMode(mode: EditorMode): void {
 	if (!editor) return
-	if (currentMode === mode && mode !== 'pan') {
-		// Toggle off to pan mode if clicking same button
-		mode = 'pan'
-	}
 
-	currentMode = mode
+	// Toggle off to pan mode if clicking same button
+	const targetMode: EditorMode = (currentMode === mode && mode !== 'pan') ? 'pan' : mode
+
+	currentMode = targetMode
 
 	// Deactivate all layers first
 	const textLayer = editor.getTextLayer()
 	const drawingLayer = editor.getDrawingLayer()
 
 	// Disable text layer if switching away from text modes
-	if (!mode.startsWith('text-')) {
+	if (!targetMode.startsWith('text-')) {
 		textLayer?.setEditMode('none')
 		textLayer?.setVisible(false)
 	}
 
 	// Disable drawing layer if switching away from draw modes
-	if (!mode.startsWith('draw-')) {
+	if (!targetMode.startsWith('draw-')) {
 		editor.setDrawingEnabled(false)
 	}
 
 	// Now activate the selected mode
-	switch (mode) {
+	switch (targetMode) {
 		case 'pan':
 			// Just navigation mode - both layers inactive
 			showToast('Pan mode - scroll to navigate')
@@ -694,7 +694,7 @@ function updateStatusMode(): void {
 	const statusMode = document.getElementById('status-mode') as HTMLSpanElement
 	if (!statusMode) return
 
-	const modeLabels: Record<string, string> = {
+	const modeLabels: Record<EditorMode, string> = {
 		'pan': 'Pan',
 		'text-select': 'Select Text',
 		'text-edit': 'Edit Text',
@@ -703,7 +703,7 @@ function updateStatusMode(): void {
 		'draw-eraser': 'Eraser',
 	}
 
-	statusMode.textContent = `Mode: ${modeLabels[currentMode] ?? 'Unknown'}`
+	statusMode.textContent = `Mode: ${modeLabels[currentMode]}`
 }
 
 function handleDrawingUndo(): void {
