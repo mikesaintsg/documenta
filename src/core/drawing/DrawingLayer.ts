@@ -463,6 +463,11 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 		this.#currentStroke = []
 	}
 
+	/** Get the effective scale factor for drawing (zoom * devicePixelRatio) */
+	#getEffectiveScale(): number {
+		return this.#currentScale * window.devicePixelRatio
+	}
+
 	#drawCurrentStroke(): void {
 		if (!this.#ctx || this.#currentStroke.length < 2) return
 
@@ -470,11 +475,10 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 		this.#redraw()
 
 		// Draw current stroke with devicePixelRatio scaling
-		const dpr = window.devicePixelRatio
-		const scaledZoom = this.#currentScale * dpr
+		const effectiveScale = this.#getEffectiveScale()
 
 		this.#ctx.save()
-		this.#ctx.scale(scaledZoom, scaledZoom)
+		this.#ctx.scale(effectiveScale, effectiveScale)
 		this.#ctx.globalAlpha = this.#opacity
 		this.#ctx.strokeStyle = this.#colorToCss(this.#strokeColor)
 		this.#ctx.lineWidth = this.#strokeWidth
@@ -506,11 +510,10 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 		if (!pageStrokes || pageStrokes.length === 0) return
 
 		// Apply devicePixelRatio scaling for high-DPI displays
-		const dpr = window.devicePixelRatio
-		const scaledZoom = this.#currentScale * dpr
+		const effectiveScale = this.#getEffectiveScale()
 
 		this.#ctx.save()
-		this.#ctx.scale(scaledZoom, scaledZoom)
+		this.#ctx.scale(effectiveScale, effectiveScale)
 
 		for (const stroke of pageStrokes) {
 			if (stroke.points.length < 2) continue
