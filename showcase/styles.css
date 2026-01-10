@@ -1,0 +1,513 @@
+/* Documenta - Showcase Styles */
+/* Mobile-first design - base styles are for mobile, media queries add desktop */
+
+:root {
+	--primary-color: #2563eb;
+	--primary-hover: #1d4ed8;
+	--danger-color: #dc2626;
+	--success-color: #16a34a;
+	--background: #f8fafc;
+	--surface: #ffffff;
+	--text-primary: #1e293b;
+	--text-secondary: #64748b;
+	--border-color: #e2e8f0;
+	--toolbar-height: auto;
+	--min-touch-target: 44px;
+}
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html {
+	/* Prevent iOS Safari bounce scrolling */
+	overflow: hidden;
+	height: 100%;
+}
+
+body {
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+	background-color: var(--background);
+	color: var(--text-primary);
+	line-height: 1.5;
+	/* Prevent text selection on UI elements for mobile */
+	-webkit-user-select: none;
+	user-select: none;
+	/* Prevent pull-to-refresh */
+	overscroll-behavior: none;
+	height: 100%;
+	overflow: hidden;
+}
+
+#app {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	height: 100dvh; /* Dynamic viewport height for mobile */
+	overflow: hidden;
+}
+
+/* Toolbar - Mobile first with collapsible menu */
+.toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	padding: 8px;
+	background-color: var(--surface);
+	border-bottom: 1px solid var(--border-color);
+	flex-shrink: 0;
+}
+
+.toolbar-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	gap: 8px;
+}
+
+.toolbar-title {
+	font-weight: 600;
+	font-size: 16px;
+	color: var(--primary-color);
+}
+
+/* Menu toggle button - visible on mobile */
+.menu-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--min-touch-target);
+	height: var(--min-touch-target);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	background-color: var(--surface);
+	cursor: pointer;
+	font-size: 20px;
+	touch-action: manipulation;
+}
+
+.menu-toggle:hover {
+	background-color: var(--background);
+}
+
+.menu-toggle[aria-expanded="true"] {
+	background-color: var(--primary-color);
+	color: white;
+}
+
+/* Collapsible menu - hidden by default on mobile */
+.toolbar-menu {
+	display: none;
+	width: 100%;
+	flex-direction: column;
+	gap: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--border-color);
+	margin-top: 8px;
+}
+
+.toolbar-menu.is-open {
+	display: flex;
+}
+
+.toolbar-section {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.toolbar-section-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	padding-left: 4px;
+}
+
+.toolbar-group {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex-wrap: wrap;
+}
+
+.toolbar-divider {
+	display: none; /* Hidden on mobile */
+}
+
+/* Quick actions always visible in header */
+.toolbar-quick-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+/* Buttons - Touch-friendly sizing */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	padding: 10px 14px;
+	min-height: var(--min-touch-target);
+	min-width: var(--min-touch-target);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	background-color: var(--surface);
+	color: var(--text-primary);
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	/* Prevent double-tap zoom on buttons */
+	touch-action: manipulation;
+}
+
+.btn:hover:not(:disabled) {
+	background-color: var(--background);
+	border-color: var(--primary-color);
+}
+
+.btn:active:not(:disabled) {
+	transform: scale(0.97);
+}
+
+.btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.btn-primary {
+	background-color: var(--primary-color);
+	border-color: var(--primary-color);
+	color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+	background-color: var(--primary-hover);
+	border-color: var(--primary-hover);
+}
+
+.btn-icon {
+	padding: 10px;
+	font-size: 16px;
+}
+
+.btn-active {
+	background-color: var(--primary-color);
+	border-color: var(--primary-color);
+	color: white;
+}
+
+/* Input - Touch-friendly */
+.input-page {
+	width: 50px;
+	padding: 8px;
+	min-height: var(--min-touch-target);
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	text-align: center;
+	font-size: 16px; /* Prevents iOS zoom on focus */
+	touch-action: manipulation;
+}
+
+.page-info {
+	font-size: 14px;
+	color: var(--text-secondary);
+}
+
+.zoom-value {
+	font-size: 14px;
+	color: var(--text-secondary);
+	min-width: 45px;
+	text-align: center;
+}
+
+/* Main Content */
+.main-content {
+	display: flex;
+	flex: 1;
+	overflow: hidden;
+	min-height: 0; /* Critical for flex child scrolling */
+}
+
+/* Viewer Container - Touch scrolling */
+.viewer-container {
+	flex: 1;
+	overflow: auto;
+	display: flex;
+	justify-content: center;
+	padding: 12px;
+	background-color: #525659;
+	/* Enable momentum scrolling on iOS */
+	-webkit-overflow-scrolling: touch;
+	/* Allow pinch-to-zoom on viewer only */
+	touch-action: pan-x pan-y;
+}
+
+.page-canvas {
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+	background-color: white;
+	/* Prevent canvas from being selected */
+	-webkit-touch-callout: none;
+}
+
+/* Page wrapper for text layer overlay */
+.page-wrapper {
+	position: relative;
+	display: inline-block;
+}
+
+/* Text layer overlay */
+.documenta-text-layer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	cursor: text;
+}
+
+/* Drawing layer overlay */
+.documenta-drawing-layer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	pointer-events: none;
+}
+
+/* Welcome Screen */
+.welcome {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: 24px;
+	color: white;
+}
+
+.welcome h2 {
+	font-size: 20px;
+	margin-bottom: 12px;
+}
+
+.welcome p {
+	color: #94a3b8;
+	margin-bottom: 16px;
+	font-size: 14px;
+}
+
+.welcome-features {
+	font-size: 11px;
+	color: #64748b;
+	margin-bottom: 12px;
+}
+
+/* Status Bar - Mobile */
+.status-bar {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 12px;
+	background-color: var(--surface);
+	border-top: 1px solid var(--border-color);
+	font-size: 11px;
+	color: var(--text-secondary);
+	text-align: center;
+}
+
+.status-bar-left {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: center;
+	gap: 8px;
+}
+
+.status-indicator {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.status-mode {
+	background-color: var(--primary-color);
+	color: white;
+	padding: 2px 8px;
+	border-radius: 4px;
+	font-weight: 500;
+	font-size: 10px;
+}
+
+.status-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: var(--success-color);
+}
+
+.status-dot.unsaved {
+	background-color: var(--danger-color);
+}
+
+/* File Input - Accessible and mobile-friendly */
+.file-input-label {
+	position: absolute;
+	overflow: hidden;
+	clip: rect(1px, 1px, 1px, 1px);
+	width: 1px;
+	height: 1px;
+}
+
+.file-input {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+}
+
+/* Toast - Mobile optimized */
+.toast {
+	position: fixed;
+	bottom: 80px;
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 10px 20px;
+	background-color: var(--text-primary);
+	color: white;
+	border-radius: 8px;
+	font-size: 13px;
+	opacity: 0;
+	transition: opacity 0.3s ease;
+	pointer-events: none;
+	max-width: 90%;
+	text-align: center;
+}
+
+.toast.visible {
+	opacity: 1;
+}
+
+/* ============================================================================
+   Desktop/Tablet Styles (min-width: 768px)
+   ============================================================================ */
+@media (min-width: 768px) {
+	.toolbar {
+		flex-wrap: nowrap;
+		gap: 8px;
+		padding: 8px 16px;
+	}
+
+	.toolbar-header {
+		width: auto;
+		flex-shrink: 0;
+	}
+
+	.toolbar-title {
+		font-size: 18px;
+	}
+
+	/* Hide menu toggle on desktop */
+	.menu-toggle {
+		display: none;
+	}
+
+	/* Show menu inline on desktop */
+	.toolbar-menu {
+		display: flex;
+		flex-direction: row;
+		width: auto;
+		flex: 1;
+		padding-top: 0;
+		border-top: none;
+		margin-top: 0;
+		gap: 8px;
+		align-items: center;
+	}
+
+	.toolbar-section {
+		flex-direction: row;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.toolbar-section-label {
+		/* Visually hidden but accessible to screen readers */
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.toolbar-group {
+		flex-wrap: nowrap;
+	}
+
+	.toolbar-divider {
+		display: block;
+		width: 1px;
+		height: 24px;
+		background-color: var(--border-color);
+		margin: 0 4px;
+	}
+
+	.btn {
+		padding: 8px 16px;
+		min-height: 36px;
+		min-width: auto;
+	}
+
+	.btn-icon {
+		padding: 8px;
+		min-width: 36px;
+	}
+
+	.input-page {
+		width: 60px;
+		min-height: 36px;
+	}
+
+	.viewer-container {
+		padding: 24px;
+	}
+
+	.welcome {
+		padding: 48px;
+	}
+
+	.welcome h2 {
+		font-size: 24px;
+	}
+
+	.welcome p {
+		font-size: 16px;
+	}
+
+	.status-bar {
+		flex-direction: row;
+		justify-content: space-between;
+		padding: 8px 16px;
+		font-size: 12px;
+	}
+
+	.status-bar-left {
+		flex-wrap: nowrap;
+		gap: 16px;
+	}
+
+	.toast {
+		bottom: 80px;
+		font-size: 14px;
+	}
+}
