@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { isNonEmptyString } from 'tactica'
 import {
+	isNonEmptyString,
 	isValidPdfFile,
 	isNonEmptyArrayBuffer,
 	isValidPageNumber,

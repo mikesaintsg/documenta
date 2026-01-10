@@ -3,11 +3,60 @@
  * @module helpers
  *
  * Project-specific helpers for PDF editing.
- * For general utilities, import directly from 'tactica'.
  */
 
-import { clamp, generateId } from 'tactica'
 import type { AnnotationColor, Point, Rectangle } from './types.js'
+
+// ============================================================================
+// Core Utility Functions
+// ============================================================================
+
+/**
+ * Clamp a number to a range
+ *
+ * @param value - The value to clamp
+ * @param min - Minimum value
+ * @param max - Maximum value
+ * @returns The clamped value
+ */
+export function clamp(value: number, min: number, max: number): number {
+	return Math.max(min, Math.min(max, value))
+}
+
+/**
+ * Generate a unique ID (UUID v4)
+ *
+ * @returns A unique string ID
+ */
+export function generateId(): string {
+	return crypto.randomUUID()
+}
+
+/**
+ * Calculate squared distance between two points
+ * Faster than distance() since it avoids Math.sqrt()
+ *
+ * @param x1 - First point X
+ * @param y1 - First point Y
+ * @param x2 - Second point X
+ * @param y2 - Second point Y
+ * @returns Squared distance between points
+ */
+export function distanceSquared(x1: number, y1: number, x2: number, y2: number): number {
+	const dx = x2 - x1
+	const dy = y2 - y1
+	return dx * dx + dy * dy
+}
+
+/**
+ * Check if a value is a non-empty string
+ *
+ * @param value - The value to check
+ * @returns True if the value is a non-empty string
+ */
+export function isNonEmptyString(value: unknown): value is string {
+	return typeof value === 'string' && value.length > 0
+}
 
 /**
  * Check if a File is a valid PDF file
@@ -89,7 +138,6 @@ export function clampPageNumber(pageNumber: number, maxPage: number): number {
 
 /**
  * Clamp a zoom level to valid range
- * Uses tactica's clamp helper
  *
  * @param zoom - The zoom level to clamp
  * @param min - Minimum zoom
@@ -163,7 +211,6 @@ export function computeFitWidthScale(
 
 /**
  * Generate a unique annotation ID
- * Uses tactica's generateId for UUID generation
  *
  * @returns A unique string ID
  */

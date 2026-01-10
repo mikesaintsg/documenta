@@ -1,8 +1,8 @@
 # Documenta - Browser PDF Editor
 
 **Last Updated:** 2026-01-10
-**Status:** Implementation Complete (with OCR/Text Editing + tactica integration)
-**Runtime Dependencies:** mupdf (v1.26.4), tactica (v0.0.1)
+**Status:** Implementation Complete (All tiers implemented)
+**Runtime Dependencies:** mupdf (v1.26.4) - sole dependency
 
 ---
 
@@ -12,7 +12,7 @@
 |-------|-------------|--------|------------|--------------|
 | 1 | Project Setup | ✅ Complete | 100% | package.json, tsconfig.json, vite.config.ts, eslint.config.ts |
 | 2 | Types Definition | ✅ Complete | 100% | src/types.ts |
-| 3 | Helpers & Utilities | ✅ Complete | 100% | src/helpers.ts (uses tactica directly) |
+| 3 | Helpers & Utilities | ✅ Complete | 100% | src/helpers.ts (native implementations) |
 | 4 | Constants | ✅ Complete | 100% | src/constants.ts |
 | 5 | Core Implementation | ✅ Complete | 100% | src/core/pdf/ |
 | 6 | Factory Functions | ✅ Complete | 100% | src/factories.ts |
@@ -22,10 +22,9 @@
 | 10 | Documentation | ✅ Complete | 100% | README.md, guides/ |
 | 11 | Text Layer (OCR) | ✅ Complete | 100% | src/core/text/ |
 | 12 | Inline Text Editing | ✅ Complete | 100% | TextLayerInterface |
-| 13 | Tactica Integration | ✅ Complete | 100% | Direct tactica imports, no re-exports |
-| 14 | Drawing Layer (Tier 3) | ✅ Complete | 100% | src/core/drawing/ |
-| 15 | Page Management (Tier 3) | ✅ Complete | 100% | PdfEditorInterface methods |
-| 16 | Form Layer (Tier 3) | ✅ Complete | 100% | src/core/form/ |
+| 13 | Drawing Layer (Tier 3) | ✅ Complete | 100% | src/core/drawing/ |
+| 14 | Page Management (Tier 3) | ✅ Complete | 100% | PdfEditorInterface methods |
+| 15 | Form Layer (Tier 3) | ✅ Complete | 100% | src/core/form/ |
 
 ---
 
@@ -472,7 +471,7 @@ PdfEditorInterface extends PdfEditorHooksInterface
 
 ## Notes
 
-- **No additional runtime dependencies**: Only mupdf is allowed
+- **No additional runtime dependencies**: Only mupdf is allowed (all utility helpers implemented natively)
 - **Browser-only**: No Node.js code in src/
 - **File System Access API**: May not be available in all browsers, provide fallbacks
 - **mupdf WebAssembly**: May require specific Vite configuration for WASM loading
