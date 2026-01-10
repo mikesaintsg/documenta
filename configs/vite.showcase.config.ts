@@ -9,6 +9,7 @@ export default defineConfig({
 	build: {
 		outDir: '../dist/showcase',
 		emptyOutDir: true,
+		target: 'esnext',
 	},
 	resolve: {
 		alias: {
