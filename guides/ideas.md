@@ -1,7 +1,7 @@
 # Documenta - Browser PDF Editor
 
 **Last Updated:** 2026-01-10
-**Status:** Implementation Complete
+**Status:** Implementation Complete (with OCR/Text Editing)
 **Runtime Dependency:** mupdf (latest - v1.26.4)
 
 ---
@@ -20,6 +20,41 @@
 | 8 | Unit Tests | ✅ Complete | 100% | tests/ |
 | 9 | Showcase Demo | ✅ Complete | 100% | showcase/ |
 | 10 | Documentation | ✅ Complete | 100% | README.md, guides/ |
+| 11 | Text Layer (OCR) | ✅ Complete | 100% | src/core/text/ |
+| 12 | Inline Text Editing | ✅ Complete | 100% | TextLayerInterface |
+
+---
+
+## Text Layer Strategy Analysis
+
+### Problem Statement
+Implement OCR and inline text editing for PDF documents.
+
+### Strategy Comparison
+
+| Strategy | Pros | Cons |
+|----------|------|------|
+| **Canvas-only** | Simple architecture | No text selection, no accessibility |
+| **DOM Overlay** | Native selection, accessible | Complex positioning sync |
+| **Hybrid Overlay** | Best of both worlds | Slightly more complexity |
+
+### Selected Strategy: Overlay (Hybrid Approach)
+
+**Rationale:**
+1. mupdf's `StructuredText` API provides character-level text positioning
+2. Overlay enables native browser text selection
+3. Canvas preserves high-quality PDF rendering
+4. HTML overlays support accessibility features
+5. Edits persist as standard FreeText annotations
+
+**Architecture:**
+```
+┌─────────────────────────────────┐
+│     Text Layer Overlay          │ ← Handles selection & editing
+├─────────────────────────────────┤
+│     PDF Canvas                  │ ← High-quality rendering
+└─────────────────────────────────┘
+```
 
 ---
 
@@ -32,6 +67,7 @@
 3. Follow strict TypeScript patterns as defined in copilot-instructions.md
 4. Provide a clean, type-safe API for PDF manipulation
 5. Build a showcase demo demonstrating all features
+6. **Implement text layer with OCR-like text extraction and inline editing**
 
 ### Methodology
 

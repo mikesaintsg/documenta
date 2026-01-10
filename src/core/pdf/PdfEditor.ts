@@ -17,7 +17,9 @@ import type {
 	PdfDocumentState,
 	PdfEditorInterface,
 	PdfEditorOptions,
+	Rectangle,
 	SaveCallback,
+	TextLayerInterface,
 	Unsubscribe,
 	ZoomChangeCallback,
 } from '../../types.js'
@@ -55,6 +57,7 @@ import {
 	PDF_MIME_TYPE,
 	ZOOM_STEP,
 } from '../../constants.js'
+import { TextLayerImpl } from '../text/TextLayer.js'
 
 type ListenerMap<T> = Set<T>
 
@@ -70,6 +73,10 @@ export class PdfEditor implements PdfEditorInterface {
 	#zoom: number = DEFAULT_ZOOM
 	#hasUnsavedChanges = false
 	#defaultAuthor: string
+
+	// Text layer for OCR and inline editing
+	#textLayer: TextLayerImpl | null = null
+	#textLayerEnabled = true
 
 	// Annotation tracking
 	#annotations: Map<string, AnyAnnotation> = new Map()
@@ -211,7 +218,11 @@ export class PdfEditor implements PdfEditorInterface {
 		}
 
 		try {
-			// Close existing document if any
+			// Close existing document and text layer if any
+			if (this.#textLayer) {
+				this.#textLayer.destroy()
+				this.#textLayer = null
+			}
 			if (this.#document) {
 				this.#document.destroy()
 				this.#document = null
@@ -233,6 +244,10 @@ export class PdfEditor implements PdfEditorInterface {
 			this.#currentPage = 1
 			this.#hasUnsavedChanges = false
 			this.#fileHandle = null
+
+			// Initialize text layer for OCR and inline editing
+			this.#textLayer = new TextLayerImpl(this.#document)
+			this.#textLayer.setVisible(this.#textLayerEnabled)
 
 			// Load existing annotations
 			this.#loadExistingAnnotations()
@@ -662,10 +677,80 @@ export class PdfEditor implements PdfEditorInterface {
 	}
 
 	// =========================================================================
+	// Text Layer (OCR and Inline Editing)
+	// =========================================================================
+
+	getTextLayer(): TextLayerInterface | null {
+		return this.#textLayer
+	}
+
+	setTextLayerEnabled(enabled: boolean): void {
+		this.#textLayerEnabled = enabled
+		if (this.#textLayer) {
+			this.#textLayer.setVisible(enabled)
+		}
+	}
+
+	isTextLayerEnabled(): boolean {
+		return this.#textLayerEnabled
+	}
+
+	getPageText(pageNumber: number): string {
+		if (!this.#textLayer) {
+			if (!this.#document) return ''
+			// Create temporary text layer for extraction
+			const page = this.#document.loadPage(pageNumber - 1)
+			const stext = page.toStructuredText()
+			const text = stext.asText()
+			page.destroy()
+			stext.destroy()
+			return text
+		}
+		return this.#textLayer.getPageText(pageNumber)
+	}
+
+	searchText(query: string): readonly { pageNumber: number; bounds: Rectangle }[] {
+		if (!this.#document) return []
+
+		const results: { pageNumber: number; bounds: Rectangle }[] = []
+		const pageCount = this.getPageCount()
+
+		for (let i = 1; i <= pageCount; i++) {
+			const page = this.#document.loadPage(i - 1)
+			const stext = page.toStructuredText()
+			const quads = stext.search(query)
+
+			for (const quadGroup of quads) {
+				for (const quad of quadGroup) {
+					results.push({
+						pageNumber: i,
+						bounds: {
+							x: Math.min(quad[0], quad[2], quad[4], quad[6]),
+							y: Math.min(quad[1], quad[3], quad[5], quad[7]),
+							width: Math.max(quad[0], quad[2], quad[4], quad[6]) - Math.min(quad[0], quad[2], quad[4], quad[6]),
+							height: Math.max(quad[1], quad[3], quad[5], quad[7]) - Math.min(quad[1], quad[3], quad[5], quad[7]),
+						},
+					})
+				}
+			}
+
+			page.destroy()
+			stext.destroy()
+		}
+
+		return results
+	}
+
+	// =========================================================================
 	// Lifecycle
 	// =========================================================================
 
 	destroy(): void {
+		if (this.#textLayer) {
+			this.#textLayer.destroy()
+			this.#textLayer = null
+		}
+
 		if (this.#document) {
 			this.#document.destroy()
 			this.#document = null

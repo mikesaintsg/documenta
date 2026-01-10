@@ -468,6 +468,47 @@ export interface PdfEditorInterface extends PdfEditorHooksInterface {
 	toArrayBuffer(): ArrayBuffer
 
 	// -------------------------------------------------------------------------
+	// Text Layer (OCR and Inline Editing)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Get the text layer interface for OCR and inline editing
+	 *
+	 * @returns The text layer interface, or null if no document is loaded
+	 */
+	getTextLayer(): TextLayerInterface | null
+
+	/**
+	 * Enable or disable the text layer overlay
+	 *
+	 * @param enabled - Whether to enable the text layer
+	 */
+	setTextLayerEnabled(enabled: boolean): void
+
+	/**
+	 * Check if the text layer is enabled
+	 *
+	 * @returns Whether the text layer is enabled
+	 */
+	isTextLayerEnabled(): boolean
+
+	/**
+	 * Extract text from a specific page
+	 *
+	 * @param pageNumber - The page number (1-indexed)
+	 * @returns Plain text content of the page
+	 */
+	getPageText(pageNumber: number): string
+
+	/**
+	 * Search for text across all pages
+	 *
+	 * @param query - The search query
+	 * @returns Array of search results with page and bounds
+	 */
+	searchText(query: string): readonly { pageNumber: number; bounds: Rectangle }[]
+
+	// -------------------------------------------------------------------------
 	// Lifecycle
 	// -------------------------------------------------------------------------
 
@@ -495,4 +536,276 @@ export interface FilePickerAcceptType {
 export interface SaveFilePickerOptions {
 	readonly suggestedName?: string
 	readonly types?: readonly FilePickerAcceptType[]
+}
+
+// ============================================================================
+// Text Layer and OCR Types
+// ============================================================================
+
+/** Text character with position and font information */
+export interface TextCharacter {
+	readonly char: string
+	readonly x: number
+	readonly y: number
+	readonly width: number
+	readonly height: number
+	readonly fontSize: number
+	readonly fontName: string
+	readonly color: AnnotationColor
+	readonly quad: readonly [number, number, number, number, number, number, number, number]
+}
+
+/** Text line containing multiple characters */
+export interface TextLine {
+	readonly id: string
+	readonly chars: readonly TextCharacter[]
+	readonly bounds: Rectangle
+	readonly baseline: number
+	readonly direction: Point
+	readonly wmode: number
+}
+
+/** Text block containing multiple lines */
+export interface TextBlock {
+	readonly id: string
+	readonly lines: readonly TextLine[]
+	readonly bounds: Rectangle
+}
+
+/** Text layer for a page containing all text blocks */
+export interface TextLayer {
+	readonly pageNumber: number
+	readonly blocks: readonly TextBlock[]
+	readonly width: number
+	readonly height: number
+}
+
+/** Text selection range */
+export interface TextSelection {
+	readonly startBlockId: string
+	readonly startLineId: string
+	readonly startCharIndex: number
+	readonly endBlockId: string
+	readonly endLineId: string
+	readonly endCharIndex: number
+	readonly selectedText: string
+	readonly bounds: readonly Rectangle[]
+}
+
+/** Text edit operation */
+export interface TextEdit {
+	readonly id: string
+	readonly pageNumber: number
+	readonly originalText: string
+	readonly newText: string
+	readonly bounds: Rectangle
+	readonly fontSize: number
+	readonly fontName: string
+	readonly color: AnnotationColor
+	readonly timestamp: Date
+}
+
+/** Text editing mode */
+export type TextEditMode = 'select' | 'edit' | 'none'
+
+/** Callback for text selection events */
+export type TextSelectionCallback = (selection: TextSelection | null) => void
+
+/** Callback for text edit events */
+export type TextEditCallback = (edit: TextEdit) => void
+
+// ============================================================================
+// Text Layer Hooks (Event Subscriptions)
+// ============================================================================
+
+/** Event subscription methods for the text layer */
+export interface TextLayerHooksInterface {
+	/** Subscribe to text selection events */
+	onTextSelect(callback: TextSelectionCallback): Unsubscribe
+
+	/** Subscribe to text edit events */
+	onTextEdit(callback: TextEditCallback): Unsubscribe
+}
+
+// ============================================================================
+// Text Layer Options
+// ============================================================================
+
+/** Options for the text layer overlay */
+export interface TextLayerOptions {
+	/** Enable text selection (default: true) */
+	readonly enableSelection?: boolean
+
+	/** Enable inline text editing (default: true) */
+	readonly enableEditing?: boolean
+
+	/** Highlight color for selection */
+	readonly selectionColor?: AnnotationColor
+
+	/** Initial callback for text selection */
+	readonly onTextSelect?: TextSelectionCallback
+
+	/** Initial callback for text edit */
+	readonly onTextEdit?: TextEditCallback
+}
+
+// ============================================================================
+// Text Layer Interface
+// ============================================================================
+
+/**
+ * Text layer interface for OCR and inline editing
+ *
+ * @remarks
+ * This interface provides text extraction, selection, and inline editing
+ * capabilities using an overlay strategy on top of the PDF canvas.
+ */
+export interface TextLayerInterface extends TextLayerHooksInterface {
+	// -------------------------------------------------------------------------
+	// Property Accessors
+	// -------------------------------------------------------------------------
+
+	/** Get the current edit mode */
+	getEditMode(): TextEditMode
+
+	/** Get the current text selection */
+	getSelection(): TextSelection | null
+
+	/** Get all text edits for a page */
+	getEdits(pageNumber: number): readonly TextEdit[]
+
+	/** Check if text layer is visible */
+	isVisible(): boolean
+
+	// -------------------------------------------------------------------------
+	// Property Mutators
+	// -------------------------------------------------------------------------
+
+	/** Set the edit mode */
+	setEditMode(mode: TextEditMode): void
+
+	/** Show or hide the text layer */
+	setVisible(visible: boolean): void
+
+	// -------------------------------------------------------------------------
+	// Text Extraction
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Extract text layer from a page
+	 *
+	 * @param pageNumber - The page number (1-indexed)
+	 * @returns The extracted text layer
+	 */
+	extractTextLayer(pageNumber: number): TextLayer
+
+	/**
+	 * Get plain text content of a page
+	 *
+	 * @param pageNumber - The page number (1-indexed)
+	 * @returns Plain text content
+	 */
+	getPageText(pageNumber: number): string
+
+	/**
+	 * Search for text on a page
+	 *
+	 * @param pageNumber - The page number (1-indexed)
+	 * @param query - The search query
+	 * @returns Array of matching bounds
+	 */
+	searchText(pageNumber: number, query: string): readonly Rectangle[]
+
+	// -------------------------------------------------------------------------
+	// Text Selection
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Select text at a point
+	 *
+	 * @param pageNumber - The page number
+	 * @param point - The point to start selection
+	 */
+	startSelection(pageNumber: number, point: Point): void
+
+	/**
+	 * Extend selection to a point
+	 *
+	 * @param point - The point to extend selection to
+	 */
+	extendSelection(point: Point): void
+
+	/**
+	 * End the current selection
+	 */
+	endSelection(): void
+
+	/**
+	 * Clear the current selection
+	 */
+	clearSelection(): void
+
+	/**
+	 * Copy selected text to clipboard
+	 */
+	copySelection(): Promise<void>
+
+	// -------------------------------------------------------------------------
+	// Inline Editing
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Start editing text at a point
+	 *
+	 * @param pageNumber - The page number
+	 * @param point - The point to start editing
+	 */
+	startEditing(pageNumber: number, point: Point): void
+
+	/**
+	 * Apply the current edit
+	 */
+	applyEdit(): void
+
+	/**
+	 * Cancel the current edit
+	 */
+	cancelEdit(): void
+
+	/**
+	 * Undo the last edit
+	 */
+	undoEdit(): void
+
+	/**
+	 * Redo the last undone edit
+	 */
+	redoEdit(): void
+
+	// -------------------------------------------------------------------------
+	// Rendering
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Render the text layer overlay
+	 *
+	 * @param pageNumber - The page number
+	 * @param container - The container element
+	 * @param scale - The current zoom scale
+	 */
+	render(pageNumber: number, container: HTMLElement, scale: number): void
+
+	/**
+	 * Update the text layer for zoom/scroll changes
+	 *
+	 * @param scale - The new scale
+	 */
+	update(scale: number): void
+
+	// -------------------------------------------------------------------------
+	// Lifecycle
+	// -------------------------------------------------------------------------
+
+	/** Destroy the text layer and release resources */
+	destroy(): void
 }

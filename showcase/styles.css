@@ -113,6 +113,12 @@ body {
 	min-width: 36px;
 }
 
+.btn-active {
+	background-color: var(--primary-color);
+	border-color: var(--primary-color);
+	color: white;
+}
+
 /* Input */
 .input-page {
 	width: 60px;
@@ -157,6 +163,20 @@ body {
 	background-color: white;
 }
 
+/* Page wrapper for text layer overlay */
+.page-wrapper {
+	position: relative;
+	display: inline-block;
+}
+
+/* Text layer overlay */
+.documenta-text-layer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	cursor: text;
+}
+
 /* Welcome Screen */
 .welcome {
 	display: flex;
@@ -176,6 +196,12 @@ body {
 .welcome p {
 	color: #94a3b8;
 	margin-bottom: 24px;
+}
+
+.welcome-features {
+	font-size: 12px;
+	color: #64748b;
+	margin-bottom: 16px;
 }
 
 /* Status Bar */

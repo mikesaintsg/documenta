@@ -63,6 +63,14 @@ function createUI(): void {
 				<button id="btn-fit-width" class="btn" disabled>Fit Width</button>
 				<button id="btn-fit-page" class="btn" disabled>Fit Page</button>
 			</div>
+
+			<div class="toolbar-divider"></div>
+
+			<div class="toolbar-group">
+				<button id="btn-mode-select" class="btn btn-icon" disabled title="Text Select Mode">📝</button>
+				<button id="btn-mode-edit" class="btn btn-icon" disabled title="Text Edit Mode">✏️</button>
+				<button id="btn-search" class="btn" disabled>Search</button>
+			</div>
 		</div>
 
 		<div class="main-content">
@@ -70,9 +78,12 @@ function createUI(): void {
 				<div id="welcome" class="welcome">
 					<h2>Welcome to Documenta</h2>
 					<p>Open a PDF file to get started</p>
+					<p class="welcome-features">Features: Text Selection, Inline Editing, Search</p>
 					<button id="btn-open-welcome" class="btn btn-primary">Open PDF</button>
 				</div>
-				<canvas id="page-canvas" class="page-canvas" style="display: none;"></canvas>
+				<div id="page-wrapper" class="page-wrapper" style="display: none;">
+					<canvas id="page-canvas" class="page-canvas"></canvas>
+				</div>
 			</div>
 		</div>
 
@@ -139,6 +150,15 @@ function attachEventListeners(): void {
 	btnFitWidth.addEventListener('click', () => editor?.fitToWidth())
 	btnFitPage.addEventListener('click', () => editor?.fitToPage())
 
+	// Text mode buttons
+	const btnModeSelect = document.getElementById('btn-mode-select') as HTMLButtonElement
+	const btnModeEdit = document.getElementById('btn-mode-edit') as HTMLButtonElement
+	const btnSearch = document.getElementById('btn-search') as HTMLButtonElement
+
+	btnModeSelect.addEventListener('click', handleSelectMode)
+	btnModeEdit.addEventListener('click', handleEditMode)
+	btnSearch.addEventListener('click', handleSearch)
+
 	// Keyboard shortcuts
 	document.addEventListener('keydown', handleKeyboard)
 }
@@ -182,12 +202,12 @@ async function handleFileSelect(event: Event): Promise<void> {
 }
 
 function handleDocumentLoad(fileName: string, pageCount: number): void {
-	// Hide welcome, show canvas
+	// Hide welcome, show page wrapper
 	const welcome = document.getElementById('welcome') as HTMLElement
-	const canvas = document.getElementById('page-canvas') as HTMLCanvasElement
+	const pageWrapper = document.getElementById('page-wrapper') as HTMLDivElement
 
 	welcome.style.display = 'none'
-	canvas.style.display = 'block'
+	pageWrapper.style.display = 'block'
 
 	// Update UI state
 	updateControlsEnabled(true)
@@ -198,6 +218,13 @@ function handleDocumentLoad(fileName: string, pageCount: number): void {
 
 	// Render first page
 	renderCurrentPage()
+
+	// Initialize text layer in select mode by default
+	const textLayer = editor?.getTextLayer()
+	if (textLayer) {
+		textLayer.setEditMode('select')
+		updateModeButtons('select')
+	}
 
 	showToast(`Loaded: ${fileName} (${pageCount} pages)`)
 }
@@ -252,8 +279,9 @@ function handleDownload(): void {
 function handleKeyboard(event: KeyboardEvent): void {
 	if (!editor || !editor.isLoaded()) return
 
-	// Ignore if focused on input
-	if (document.activeElement?.tagName === 'INPUT') return
+	// Ignore if focused on input or textarea
+	const tagName = document.activeElement?.tagName
+	if (tagName === 'INPUT' || tagName === 'TEXTAREA') return
 
 	switch (event.key) {
 		case 'ArrowLeft':
@@ -279,6 +307,62 @@ function handleKeyboard(event: KeyboardEvent): void {
 			event.preventDefault()
 			editor.resetZoom()
 			break
+		case 'c':
+			// Copy selection with Ctrl/Cmd+C
+			if (event.ctrlKey || event.metaKey) {
+				const textLayer = editor.getTextLayer()
+				if (textLayer?.getSelection()) {
+					event.preventDefault()
+					textLayer.copySelection()
+					showToast('Text copied to clipboard')
+				}
+			}
+			break
+		case 'f':
+			// Search with Ctrl/Cmd+F
+			if (event.ctrlKey || event.metaKey) {
+				event.preventDefault()
+				handleSearch()
+			}
+			break
+	}
+}
+
+function handleSelectMode(): void {
+	if (!editor) return
+	const textLayer = editor.getTextLayer()
+	if (textLayer) {
+		textLayer.setEditMode('select')
+		updateModeButtons('select')
+		showToast('Text selection mode')
+	}
+}
+
+function handleEditMode(): void {
+	if (!editor) return
+	const textLayer = editor.getTextLayer()
+	if (textLayer) {
+		textLayer.setEditMode('edit')
+		updateModeButtons('edit')
+		showToast('Text edit mode - double-click to edit')
+	}
+}
+
+function handleSearch(): void {
+	if (!editor) return
+	const query = prompt('Search text:')
+	if (!query) return
+
+	const results = editor.searchText(query)
+	if (results.length === 0) {
+		showToast('No matches found')
+	} else {
+		// Go to first result page
+		const firstResult = results[0]
+		if (firstResult) {
+			editor.goToPage(firstResult.pageNumber)
+			showToast(`Found ${results.length} matches`)
+		}
 	}
 }
 
@@ -310,6 +394,9 @@ function updateControlsEnabled(enabled: boolean): void {
 		'btn-zoom-out',
 		'btn-fit-width',
 		'btn-fit-page',
+		'btn-mode-select',
+		'btn-mode-edit',
+		'btn-search',
 	]
 
 	for (const id of controls) {
@@ -318,6 +405,14 @@ function updateControlsEnabled(enabled: boolean): void {
 			el.disabled = !enabled
 		}
 	}
+}
+
+function updateModeButtons(mode: 'select' | 'edit' | 'none'): void {
+	const btnSelect = document.getElementById('btn-mode-select') as HTMLButtonElement
+	const btnEdit = document.getElementById('btn-mode-edit') as HTMLButtonElement
+
+	btnSelect.classList.toggle('btn-active', mode === 'select')
+	btnEdit.classList.toggle('btn-active', mode === 'edit')
 }
 
 function updatePageInfo(currentPage: number, totalPages: number): void {

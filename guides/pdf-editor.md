@@ -9,6 +9,7 @@ Documenta is a browser-only PDF editor built on top of [mupdf.js](https://mupdf.
 - Loading and rendering PDF documents
 - Navigation and zoom controls
 - Adding and managing annotations
+- **Text extraction and inline editing (via overlay strategy)**
 - Saving and exporting documents
 
 ## Architecture
@@ -22,8 +23,10 @@ src/
 ├── constants.ts     # Default values and colors
 ├── factories.ts     # Factory function for creating editors
 ├── core/
-│   └── pdf/
-│       └── PdfEditor.ts  # Core implementation
+│   ├── pdf/
+│   │   └── PdfEditor.ts  # Core PDF implementation
+│   └── text/
+│       └── TextLayer.ts  # Text layer for OCR and inline editing
 └── index.ts         # Barrel exports
 ```
 
@@ -303,3 +306,143 @@ if (hasFileSystemAccess()) {
   editor.download()
 }
 ```
+
+## Text Layer (OCR and Inline Editing)
+
+The Text Layer provides text extraction, selection, and inline editing using an overlay strategy.
+
+### Strategy: HTML Overlay
+
+The text layer uses a transparent HTML overlay on top of the PDF canvas:
+
+- **Canvas Layer**: High-quality PDF rendering via mupdf
+- **Overlay Layer**: Handles text selection and editing with native browser behavior
+
+This approach provides:
+- Native browser text selection
+- Accessibility support
+- Precise character positioning from mupdf's StructuredText API
+- Edits persist as standard PDF FreeText annotations
+
+### Getting the Text Layer
+
+```typescript
+const textLayer = editor.getTextLayer()
+if (textLayer) {
+  // Text layer is available after document loads
+}
+```
+
+### Text Extraction
+
+```typescript
+// Get plain text from a page
+const text = editor.getPageText(1)
+console.log(text)
+
+// Get structured text layer with character positions
+const layer = textLayer.extractTextLayer(1)
+// {
+//   pageNumber: 1,
+//   blocks: [
+//     {
+//       id: 'block-1',
+//       bounds: { x, y, width, height },
+//       lines: [
+//         {
+//           id: 'line-1',
+//           chars: [{ char: 'H', x, y, width, height, fontSize, fontName, color }]
+//         }
+//       ]
+//     }
+//   ]
+// }
+```
+
+### Text Search
+
+```typescript
+// Search across all pages
+const results = editor.searchText('keyword')
+// [{ pageNumber: 1, bounds: { x, y, width, height } }, ...]
+
+if (results.length > 0) {
+  // Navigate to first result
+  editor.goToPage(results[0].pageNumber)
+}
+```
+
+### Text Selection Mode
+
+```typescript
+// Enable selection mode
+textLayer.setEditMode('select')
+
+// Listen for selection changes
+textLayer.onTextSelect((selection) => {
+  if (selection) {
+    console.log('Selected:', selection.selectedText)
+  }
+})
+
+// Copy selection to clipboard
+await textLayer.copySelection()
+
+// Clear selection
+textLayer.clearSelection()
+```
+
+### Inline Text Editing Mode
+
+```typescript
+// Enable edit mode
+textLayer.setEditMode('edit')
+
+// Listen for edits
+textLayer.onTextEdit((edit) => {
+  console.log(`Changed "${edit.originalText}" to "${edit.newText}"`)
+})
+
+// Double-click on text to start editing
+// Press Enter to apply, Escape to cancel
+
+// Undo/Redo
+textLayer.undoEdit()
+textLayer.redoEdit()
+```
+
+### Rendering the Text Layer
+
+```typescript
+// Render text layer overlay on a container
+const pageWrapper = document.getElementById('page-wrapper')
+textLayer.render(pageNumber, pageWrapper, editor.getZoom())
+
+// Update when zoom changes
+editor.onZoomChange((zoom) => {
+  textLayer.update(zoom)
+})
+```
+
+### Text Layer Options
+
+```typescript
+const textLayer = new TextLayerImpl(document, {
+  enableSelection: true,      // Enable text selection
+  enableEditing: true,        // Enable inline editing
+  selectionColor: { r: 0.2, g: 0.5, b: 1.0 },  // Selection highlight color
+  onTextSelect: (selection) => { ... },
+  onTextEdit: (edit) => { ... },
+})
+```
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Ctrl/Cmd + C` | Copy selected text |
+| `Ctrl/Cmd + F` | Search text |
+| `Enter` | Apply edit |
+| `Escape` | Cancel edit |
+| `Ctrl/Cmd + Z` | Undo edit |
+| `Ctrl/Cmd + Shift + Z` | Redo edit |

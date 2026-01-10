@@ -12,6 +12,9 @@ A browser-only PDF editor built with [mupdf](https://www.npmjs.com/package/mupdf
 - 📑 **Navigation** - Page navigation with keyboard shortcuts
 - 💾 **Save/Download** - Save changes using File System Access API or download
 - ✏️ **Annotations** - Add text, highlight, ink, and shape annotations
+- 📝 **Text Selection** - Select and copy text from PDFs (overlay strategy)
+- ✍️ **Inline Text Editing** - Edit PDF text in place with overlay editor
+- 🔎 **Text Search** - Search for text across all pages
 
 ## Installation
 
@@ -120,6 +123,13 @@ Creates a new PDF editor instance.
 - `download(fileName?: string): void` - Download as file
 - `toArrayBuffer(): ArrayBuffer` - Get PDF as ArrayBuffer
 
+#### Text Layer (OCR & Editing)
+- `getTextLayer(): TextLayerInterface | null` - Get text layer for selection/editing
+- `setTextLayerEnabled(enabled: boolean): void` - Enable/disable text layer
+- `isTextLayerEnabled(): boolean` - Check if text layer is enabled
+- `getPageText(pageNumber: number): string` - Get plain text from page
+- `searchText(query: string): { pageNumber, bounds }[]` - Search text across pages
+
 #### State
 - `getState(): PdfDocumentState` - Get current state
 - `isLoaded(): boolean` - Check if document is loaded
@@ -131,6 +141,33 @@ Creates a new PDF editor instance.
 #### Lifecycle
 - `destroy(): void` - Clean up resources
 
+## Text Layer API
+
+The text layer provides OCR-like text extraction and inline editing using an overlay strategy.
+
+```typescript
+const textLayer = editor.getTextLayer()
+
+// Set edit mode: 'select', 'edit', or 'none'
+textLayer.setEditMode('select')
+
+// Text selection
+textLayer.onTextSelect((selection) => {
+  console.log('Selected:', selection?.selectedText)
+})
+
+// Inline editing (double-click to edit in 'edit' mode)
+textLayer.onTextEdit((edit) => {
+  console.log(`Changed: ${edit.originalText} → ${edit.newText}`)
+})
+
+// Copy selected text
+await textLayer.copySelection()
+
+// Search
+const results = editor.searchText('keyword')
+```
+
 ## Keyboard Shortcuts
 
 | Key | Action |
@@ -140,6 +177,8 @@ Creates a new PDF editor instance.
 | `+` / `=` | Zoom in |
 | `-` | Zoom out |
 | `0` | Reset zoom |
+| `Ctrl/Cmd + C` | Copy selected text |
+| `Ctrl/Cmd + F` | Search text |
 
 ## Browser Support
 
