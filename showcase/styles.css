@@ -271,6 +271,14 @@ body {
 	cursor: text;
 }
 
+/* Drawing layer overlay */
+.documenta-drawing-layer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	pointer-events: none;
+}
+
 /* Welcome Screen */
 .welcome {
 	display: flex;

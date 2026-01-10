@@ -3,6 +3,7 @@
  * @module core/drawing/DrawingLayer
  *
  * Provides freehand drawing capabilities with pen, highlighter, and eraser tools.
+ * Uses a separate transparent overlay canvas to avoid coordinate issues with PDF rendering.
  */
 
 import * as mupdf from 'mupdf'
@@ -30,6 +31,7 @@ type ListenerMap<T> = Set<T>
 
 /**
  * Drawing Layer implementation for freehand annotations
+ * Uses a separate overlay canvas for drawing to prevent coordinate issues
  */
 export class DrawingLayerImpl implements DrawingLayerInterface {
 	#document: mupdf.PDFDocument
@@ -48,9 +50,11 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 	#undoStack: DrawingStroke[] = []
 	#redoStack: DrawingStroke[] = []
 
-	// Canvas references
-	#canvas: HTMLCanvasElement | null = null
+	// Overlay canvas for drawing (separate from PDF canvas)
+	#overlayCanvas: HTMLCanvasElement | null = null
 	#ctx: CanvasRenderingContext2D | null = null
+	#container: HTMLElement | null = null
+	#pdfCanvas: HTMLCanvasElement | null = null
 	#currentScale = 1
 	#currentPageNumber = 0
 
@@ -166,8 +170,9 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 		this.#isDrawing = false
 		this.#currentStroke = []
 		this.#detachEventListeners()
-		if (this.#canvas) {
-			this.#canvas.style.cursor = 'default'
+		if (this.#overlayCanvas) {
+			this.#overlayCanvas.style.cursor = 'default'
+			this.#overlayCanvas.style.pointerEvents = 'none'
 		}
 	}
 
@@ -220,13 +225,44 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 	// =========================================================================
 
 	render(pageNumber: number, canvas: HTMLCanvasElement, scale: number): void {
-		this.#canvas = canvas
-		this.#ctx = canvas.getContext('2d')
+		this.#pdfCanvas = canvas
 		this.#currentScale = scale
 		this.#currentPageNumber = pageNumber
 
+		// Get or create the overlay canvas
+		const parent = canvas.parentElement
+		if (!parent) return
+		this.#container = parent
+
+		// Create overlay canvas if it doesn't exist
+		if (!this.#overlayCanvas) {
+			this.#overlayCanvas = document.createElement('canvas')
+			this.#overlayCanvas.className = 'documenta-drawing-layer'
+			this.#overlayCanvas.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				pointer-events: none;
+				z-index: 15;
+				touch-action: none;
+			`
+			parent.appendChild(this.#overlayCanvas)
+		}
+
+		// Match the overlay canvas size to the PDF canvas
+		this.#overlayCanvas.width = canvas.width
+		this.#overlayCanvas.height = canvas.height
+		this.#overlayCanvas.style.width = canvas.style.width
+		this.#overlayCanvas.style.height = canvas.style.height
+
+		this.#ctx = this.#overlayCanvas.getContext('2d')
+
+		// Enable or disable pointer events based on activation state
 		if (this.#isActive) {
+			this.#overlayCanvas.style.pointerEvents = 'auto'
 			this.#updateCursor()
+		} else {
+			this.#overlayCanvas.style.pointerEvents = 'none'
 		}
 
 		this.#redraw()
@@ -252,12 +288,16 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 
 	destroy(): void {
 		this.deactivate()
+		if (this.#overlayCanvas && this.#overlayCanvas.parentNode) {
+			this.#overlayCanvas.parentNode.removeChild(this.#overlayCanvas)
+		}
 		this.#strokes.clear()
 		this.#undoStack = []
 		this.#redoStack = []
 		this.#strokeCompleteListeners.clear()
 		this.#strokeEraseListeners.clear()
-		this.#canvas = null
+		this.#overlayCanvas = null
+		this.#pdfCanvas = null
 		this.#ctx = null
 	}
 
@@ -266,44 +306,44 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 	// =========================================================================
 
 	#attachEventListeners(): void {
-		if (!this.#canvas) return
+		if (!this.#overlayCanvas) return
 
 		// Use unified pointer events for mobile/desktop compatibility
-		this.#canvas.addEventListener('pointerdown', this.#boundPointerDown)
-		this.#canvas.addEventListener('pointermove', this.#boundPointerMove)
-		this.#canvas.addEventListener('pointerup', this.#boundPointerUp)
-		this.#canvas.addEventListener('pointercancel', this.#boundPointerCancel)
-		this.#canvas.addEventListener('pointerleave', this.#boundPointerUp)
+		this.#overlayCanvas.addEventListener('pointerdown', this.#boundPointerDown)
+		this.#overlayCanvas.addEventListener('pointermove', this.#boundPointerMove)
+		this.#overlayCanvas.addEventListener('pointerup', this.#boundPointerUp)
+		this.#overlayCanvas.addEventListener('pointercancel', this.#boundPointerCancel)
+		this.#overlayCanvas.addEventListener('pointerleave', this.#boundPointerUp)
 
 		// Prevent default touch actions to avoid scrolling while drawing
-		this.#canvas.style.touchAction = 'none'
+		this.#overlayCanvas.style.touchAction = 'none'
 	}
 
 	#detachEventListeners(): void {
-		if (!this.#canvas) return
+		if (!this.#overlayCanvas) return
 
-		this.#canvas.removeEventListener('pointerdown', this.#boundPointerDown)
-		this.#canvas.removeEventListener('pointermove', this.#boundPointerMove)
-		this.#canvas.removeEventListener('pointerup', this.#boundPointerUp)
-		this.#canvas.removeEventListener('pointercancel', this.#boundPointerCancel)
-		this.#canvas.removeEventListener('pointerleave', this.#boundPointerUp)
+		this.#overlayCanvas.removeEventListener('pointerdown', this.#boundPointerDown)
+		this.#overlayCanvas.removeEventListener('pointermove', this.#boundPointerMove)
+		this.#overlayCanvas.removeEventListener('pointerup', this.#boundPointerUp)
+		this.#overlayCanvas.removeEventListener('pointercancel', this.#boundPointerCancel)
+		this.#overlayCanvas.removeEventListener('pointerleave', this.#boundPointerUp)
 
 		// Restore default touch action
-		this.#canvas.style.touchAction = ''
+		this.#overlayCanvas.style.touchAction = ''
 	}
 
 	#updateCursor(): void {
-		if (!this.#canvas || !this.#isActive) return
+		if (!this.#overlayCanvas || !this.#isActive) return
 
 		switch (this.#currentTool) {
 			case 'pen':
-				this.#canvas.style.cursor = 'crosshair'
+				this.#overlayCanvas.style.cursor = 'crosshair'
 				break
 			case 'highlighter':
-				this.#canvas.style.cursor = 'crosshair'
+				this.#overlayCanvas.style.cursor = 'crosshair'
 				break
 			case 'eraser':
-				this.#canvas.style.cursor = 'cell'
+				this.#overlayCanvas.style.cursor = 'cell'
 				break
 		}
 	}
@@ -315,8 +355,8 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 		e.preventDefault()
 
 		// Capture pointer for reliable tracking
-		if (this.#canvas) {
-			this.#canvas.setPointerCapture(e.pointerId)
+		if (this.#overlayCanvas) {
+			this.#overlayCanvas.setPointerCapture(e.pointerId)
 		}
 
 		const point = this.#getPointFromPointer(e)
@@ -336,9 +376,9 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 		if (!e.isPrimary) return
 
 		// Release pointer capture
-		if (this.#canvas && e.pointerId !== undefined) {
+		if (this.#overlayCanvas && e.pointerId !== undefined) {
 			try {
-				this.#canvas.releasePointerCapture(e.pointerId)
+				this.#overlayCanvas.releasePointerCapture(e.pointerId)
 			} catch {
 				// Ignore if pointer is not captured
 			}
@@ -348,7 +388,7 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 	}
 
 	#getPointFromPointer(e: PointerEvent): Point {
-		const rect = this.#canvas?.getBoundingClientRect()
+		const rect = this.#overlayCanvas?.getBoundingClientRect()
 		if (!rect) return { x: 0, y: 0 }
 
 		return {
@@ -429,9 +469,12 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 		// Redraw everything to show current stroke
 		this.#redraw()
 
-		// Draw current stroke
+		// Draw current stroke with devicePixelRatio scaling
+		const dpr = window.devicePixelRatio
+		const scaledZoom = this.#currentScale * dpr
+
 		this.#ctx.save()
-		this.#ctx.scale(this.#currentScale, this.#currentScale)
+		this.#ctx.scale(scaledZoom, scaledZoom)
 		this.#ctx.globalAlpha = this.#opacity
 		this.#ctx.strokeStyle = this.#colorToCss(this.#strokeColor)
 		this.#ctx.lineWidth = this.#strokeWidth
@@ -454,16 +497,20 @@ export class DrawingLayerImpl implements DrawingLayerInterface {
 	}
 
 	#redraw(): void {
-		if (!this.#ctx || !this.#canvas) return
+		if (!this.#ctx || !this.#overlayCanvas) return
 
-		// Note: We don't clear the canvas since the PDF is rendered there
-		// We only draw over it. The strokes are applied permanently as annotations.
+		// Clear the overlay canvas first (it's a separate transparent layer)
+		this.#ctx.clearRect(0, 0, this.#overlayCanvas.width, this.#overlayCanvas.height)
 
 		const pageStrokes = this.#strokes.get(this.#currentPageNumber)
-		if (!pageStrokes) return
+		if (!pageStrokes || pageStrokes.length === 0) return
+
+		// Apply devicePixelRatio scaling for high-DPI displays
+		const dpr = window.devicePixelRatio
+		const scaledZoom = this.#currentScale * dpr
 
 		this.#ctx.save()
-		this.#ctx.scale(this.#currentScale, this.#currentScale)
+		this.#ctx.scale(scaledZoom, scaledZoom)
 
 		for (const stroke of pageStrokes) {
 			if (stroke.points.length < 2) continue

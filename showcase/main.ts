@@ -400,6 +400,30 @@ function handleDocumentLoad(fileName: string, pageCount: number): void {
 	// Initialize to pan mode (safest default for mobile)
 	setMode('pan')
 
+	// Setup text selection feedback
+	const textLayer = editor?.getTextLayer()
+	if (textLayer) {
+		textLayer.onTextSelect((selection) => {
+			if (selection && selection.selectedText.length > 0) {
+				const charCount = selection.selectedText.length
+				showToast(`Selected ${charCount} chars - press Ctrl+C to copy`)
+			}
+		})
+
+		textLayer.onTextEdit((edit) => {
+			showToast(`Edited: "${edit.originalText}" → "${edit.newText}"`)
+			updateSavedStatus(false)
+		})
+	}
+
+	// Setup drawing feedback
+	const drawingLayer = editor?.getDrawingLayer()
+	if (drawingLayer) {
+		drawingLayer.onStrokeComplete(() => {
+			updateSavedStatus(false)
+		})
+	}
+
 	// Check for form fields
 	if (editor?.hasFormFields()) {
 		updateFormStatus(true)

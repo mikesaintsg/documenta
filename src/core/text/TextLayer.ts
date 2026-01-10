@@ -833,7 +833,7 @@ export class TextLayerImpl implements TextLayerInterface {
 		return null
 	}
 
-	#findTextSpan(line: TextLine, charIndex: number): {
+	#findTextSpan(line: TextLine, _charIndex: number): {
 		text: string
 		bounds: Rectangle
 		fontSize: number
@@ -841,9 +841,9 @@ export class TextLayerImpl implements TextLayerInterface {
 		color: AnnotationColor
 	} {
 		const chars = line.chars
-		const clickedChar = chars[charIndex]
 
-		if (!clickedChar) {
+		// Return the entire line for editing (not just the clicked word)
+		if (chars.length === 0) {
 			return {
 				text: '',
 				bounds: line.bounds,
@@ -853,53 +853,33 @@ export class TextLayerImpl implements TextLayerInterface {
 			}
 		}
 
-		// Find word boundaries (simple whitespace detection)
-		let startIndex = charIndex
-		let endIndex = charIndex
-
-		// Find start of word
-		while (startIndex > 0) {
-			const prevChar = chars[startIndex - 1]
-			if (!prevChar || prevChar.char.trim() === '') break
-			startIndex--
-		}
-
-		// Find end of word
-		while (endIndex < chars.length - 1) {
-			const nextChar = chars[endIndex + 1]
-			if (!nextChar || nextChar.char.trim() === '') break
-			endIndex++
-		}
-
-		const wordChars = chars.slice(startIndex, endIndex + 1)
-		const text = wordChars.map(c => c.char).join('')
-
-		const firstChar = wordChars[0]
-		const lastChar = wordChars[wordChars.length - 1]
+		const firstChar = chars[0]
+		const lastChar = chars[chars.length - 1]
+		const text = chars.map(c => c.char).join('')
 
 		if (!firstChar || !lastChar) {
 			return {
 				text: '',
 				bounds: line.bounds,
-				fontSize: clickedChar.fontSize,
-				fontName: clickedChar.fontName,
-				color: clickedChar.color,
+				fontSize: 12,
+				fontName: 'Helvetica',
+				color: { r: 0, g: 0, b: 0 },
 			}
 		}
 
 		const bounds: Rectangle = {
 			x: firstChar.x,
-			y: Math.min(...wordChars.map(c => c.y)),
+			y: Math.min(...chars.map(c => c.y)),
 			width: (lastChar.x + lastChar.width) - firstChar.x,
-			height: Math.max(...wordChars.map(c => c.height)),
+			height: Math.max(...chars.map(c => c.height)),
 		}
 
 		return {
 			text,
 			bounds,
-			fontSize: clickedChar.fontSize,
-			fontName: clickedChar.fontName,
-			color: clickedChar.color,
+			fontSize: firstChar.fontSize,
+			fontName: firstChar.fontName,
+			color: firstChar.color,
 		}
 	}
 
