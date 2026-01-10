@@ -49,7 +49,7 @@ body {
 	overflow: hidden;
 }
 
-/* Toolbar - Mobile first (stacked layout) */
+/* Toolbar - Mobile first with collapsible menu */
 .toolbar {
 	display: flex;
 	flex-wrap: wrap;
@@ -61,12 +61,72 @@ body {
 	flex-shrink: 0;
 }
 
+.toolbar-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	gap: 8px;
+}
+
 .toolbar-title {
 	font-weight: 600;
 	font-size: 16px;
 	color: var(--primary-color);
-	flex-basis: 100%;
-	margin-bottom: 4px;
+}
+
+/* Menu toggle button - visible on mobile */
+.menu-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--min-touch-target);
+	height: var(--min-touch-target);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	background-color: var(--surface);
+	cursor: pointer;
+	font-size: 20px;
+	touch-action: manipulation;
+}
+
+.menu-toggle:hover {
+	background-color: var(--background);
+}
+
+.menu-toggle[aria-expanded="true"] {
+	background-color: var(--primary-color);
+	color: white;
+}
+
+/* Collapsible menu - hidden by default on mobile */
+.toolbar-menu {
+	display: none;
+	width: 100%;
+	flex-direction: column;
+	gap: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--border-color);
+	margin-top: 8px;
+}
+
+.toolbar-menu.is-open {
+	display: flex;
+}
+
+.toolbar-section {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.toolbar-section-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	padding-left: 4px;
 }
 
 .toolbar-group {
@@ -78,6 +138,13 @@ body {
 
 .toolbar-divider {
 	display: none; /* Hidden on mobile */
+}
+
+/* Quick actions always visible in header */
+.toolbar-quick-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
 }
 
 /* Buttons - Touch-friendly sizing */
@@ -260,6 +327,15 @@ body {
 	gap: 4px;
 }
 
+.status-mode {
+	background-color: var(--primary-color);
+	color: white;
+	padding: 2px 8px;
+	border-radius: 4px;
+	font-weight: 500;
+	font-size: 10px;
+}
+
 .status-dot {
 	width: 8px;
 	height: 8px;
@@ -320,11 +396,41 @@ body {
 		padding: 8px 16px;
 	}
 
+	.toolbar-header {
+		width: auto;
+		flex-shrink: 0;
+	}
+
 	.toolbar-title {
-		flex-basis: auto;
-		margin-bottom: 0;
-		margin-right: auto;
 		font-size: 18px;
+	}
+
+	/* Hide menu toggle on desktop */
+	.menu-toggle {
+		display: none;
+	}
+
+	/* Show menu inline on desktop */
+	.toolbar-menu {
+		display: flex;
+		flex-direction: row;
+		width: auto;
+		flex: 1;
+		padding-top: 0;
+		border-top: none;
+		margin-top: 0;
+		gap: 8px;
+		align-items: center;
+	}
+
+	.toolbar-section {
+		flex-direction: row;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.toolbar-section-label {
+		display: none; /* Hide labels on desktop - icons are self-explanatory */
 	}
 
 	.toolbar-group {
@@ -336,7 +442,7 @@ body {
 		width: 1px;
 		height: 24px;
 		background-color: var(--border-color);
-		margin: 0 8px;
+		margin: 0 4px;
 	}
 
 	.btn {

@@ -20,6 +20,9 @@ import type { PdfEditorInterface } from '~/src/types.js'
 
 let editor: PdfEditorInterface | null = null
 let toastTimeout: ReturnType<typeof setTimeout> | null = null
+/** Current mode: 'pan' | 'text-select' | 'text-edit' | 'draw-pen' | 'draw-highlighter' | 'draw-eraser' */
+let currentMode: string = 'pan'
+let isMenuOpen = false
 
 // ============================================================================
 // DOM Elements
@@ -36,58 +39,92 @@ const appElement: HTMLElement = app
 function createUI(): void {
 	appElement.innerHTML = `
 		<div class="toolbar">
-			<span class="toolbar-title">Documenta</span>
-
-			<div class="toolbar-group">
-				<label for="file-input" class="file-input-label">
-					<input type="file" id="file-input" class="file-input" accept=".pdf,application/pdf,application/x-pdf">
-				</label>
-				<button id="btn-open" class="btn btn-primary">Open PDF</button>
-				<button id="btn-save" class="btn" disabled>Save</button>
-				<button id="btn-download" class="btn" disabled>Download</button>
+			<div class="toolbar-header">
+				<span class="toolbar-title">Documenta</span>
+				<div class="toolbar-quick-actions">
+					<label for="file-input" class="file-input-label">
+						<input type="file" id="file-input" class="file-input" accept=".pdf,application/pdf,application/x-pdf">
+					</label>
+					<button id="btn-open" class="btn btn-primary btn-icon" title="Open PDF">📂</button>
+					<button id="btn-save" class="btn btn-icon" disabled title="Save">💾</button>
+				</div>
+				<button id="menu-toggle" class="menu-toggle" aria-expanded="false" aria-label="Toggle menu">☰</button>
 			</div>
 
-			<div class="toolbar-divider"></div>
+			<div id="toolbar-menu" class="toolbar-menu">
+				<!-- Navigation Section -->
+				<div class="toolbar-section">
+					<span class="toolbar-section-label">Navigate</span>
+					<div class="toolbar-group">
+						<button id="btn-prev" class="btn btn-icon" disabled title="Previous Page">◀</button>
+						<input type="number" id="input-page" class="input-page" value="1" min="1" disabled>
+						<span class="page-info">/ <span id="page-count">0</span></span>
+						<button id="btn-next" class="btn btn-icon" disabled title="Next Page">▶</button>
+					</div>
+				</div>
 
-			<div class="toolbar-group">
-				<button id="btn-prev" class="btn btn-icon" disabled title="Previous Page">◀</button>
-				<input type="number" id="input-page" class="input-page" value="1" min="1" disabled>
-				<span class="page-info">/ <span id="page-count">0</span></span>
-				<button id="btn-next" class="btn btn-icon" disabled title="Next Page">▶</button>
-			</div>
+				<div class="toolbar-divider"></div>
 
-			<div class="toolbar-divider"></div>
+				<!-- Zoom Section -->
+				<div class="toolbar-section">
+					<span class="toolbar-section-label">Zoom</span>
+					<div class="toolbar-group">
+						<button id="btn-zoom-out" class="btn btn-icon" disabled title="Zoom Out">−</button>
+						<span id="zoom-value" class="zoom-value">100%</span>
+						<button id="btn-zoom-in" class="btn btn-icon" disabled title="Zoom In">+</button>
+						<button id="btn-fit-width" class="btn" disabled>Fit Width</button>
+						<button id="btn-fit-page" class="btn" disabled>Fit Page</button>
+					</div>
+				</div>
 
-			<div class="toolbar-group">
-				<button id="btn-zoom-out" class="btn btn-icon" disabled title="Zoom Out">−</button>
-				<span id="zoom-value" class="zoom-value">100%</span>
-				<button id="btn-zoom-in" class="btn btn-icon" disabled title="Zoom In">+</button>
-				<button id="btn-fit-width" class="btn" disabled>Fit Width</button>
-				<button id="btn-fit-page" class="btn" disabled>Fit Page</button>
-			</div>
+				<div class="toolbar-divider"></div>
 
-			<div class="toolbar-divider"></div>
+				<!-- Mode Section - Text Tools -->
+				<div class="toolbar-section">
+					<span class="toolbar-section-label">Text Tools</span>
+					<div class="toolbar-group">
+						<button id="btn-mode-pan" class="btn btn-icon btn-active" title="Pan Mode (scroll/navigate)">🖐️</button>
+						<button id="btn-mode-select" class="btn btn-icon" disabled title="Select Text">📝</button>
+						<button id="btn-mode-edit" class="btn btn-icon" disabled title="Edit Text (double-tap)">✏️</button>
+						<button id="btn-search" class="btn btn-icon" disabled title="Search Text">🔍</button>
+					</div>
+				</div>
 
-			<div class="toolbar-group">
-				<button id="btn-mode-select" class="btn btn-icon" disabled title="Text Select Mode">📝</button>
-				<button id="btn-mode-edit" class="btn btn-icon" disabled title="Text Edit Mode">✏️</button>
-				<button id="btn-search" class="btn" disabled>Search</button>
-			</div>
+				<div class="toolbar-divider"></div>
 
-			<div class="toolbar-divider"></div>
+				<!-- Mode Section - Drawing Tools -->
+				<div class="toolbar-section">
+					<span class="toolbar-section-label">Drawing Tools</span>
+					<div class="toolbar-group">
+						<button id="btn-draw-pen" class="btn btn-icon" disabled title="Pen">🖊️</button>
+						<button id="btn-draw-highlight" class="btn btn-icon" disabled title="Highlighter">🖍️</button>
+						<button id="btn-draw-eraser" class="btn btn-icon" disabled title="Eraser">🧽</button>
+						<button id="btn-draw-undo" class="btn btn-icon" disabled title="Undo Stroke">↩️</button>
+						<button id="btn-draw-redo" class="btn btn-icon" disabled title="Redo Stroke">↪️</button>
+					</div>
+				</div>
 
-			<div class="toolbar-group">
-				<button id="btn-draw-pen" class="btn btn-icon" disabled title="Pen Tool">🖊️</button>
-				<button id="btn-draw-highlight" class="btn btn-icon" disabled title="Highlighter">🖍️</button>
-				<button id="btn-draw-eraser" class="btn btn-icon" disabled title="Eraser">🧽</button>
-			</div>
+				<div class="toolbar-divider"></div>
 
-			<div class="toolbar-divider"></div>
+				<!-- Page Management Section -->
+				<div class="toolbar-section">
+					<span class="toolbar-section-label">Pages</span>
+					<div class="toolbar-group">
+						<button id="btn-add-page" class="btn btn-icon" disabled title="Add Blank Page">➕</button>
+						<button id="btn-delete-page" class="btn btn-icon" disabled title="Delete Page">🗑️</button>
+						<button id="btn-rotate-page" class="btn btn-icon" disabled title="Rotate Page">🔄</button>
+					</div>
+				</div>
 
-			<div class="toolbar-group">
-				<button id="btn-add-page" class="btn btn-icon" disabled title="Add Blank Page">➕</button>
-				<button id="btn-delete-page" class="btn btn-icon" disabled title="Delete Page">🗑️</button>
-				<button id="btn-rotate-page" class="btn btn-icon" disabled title="Rotate Page">🔄</button>
+				<div class="toolbar-divider"></div>
+
+				<!-- File Operations Section -->
+				<div class="toolbar-section">
+					<span class="toolbar-section-label">File</span>
+					<div class="toolbar-group">
+						<button id="btn-download" class="btn" disabled>Download</button>
+					</div>
+				</div>
 			</div>
 		</div>
 
@@ -113,6 +150,7 @@ function createUI(): void {
 					<span id="status-saved"></span>
 				</span>
 				<span id="status-form" class="status-form"></span>
+				<span id="status-mode" class="status-mode">Mode: Pan</span>
 			</div>
 			<span id="status-fs-api">${hasFileSystemAccess() ? 'File System Access API available' : 'Using fallback download'}</span>
 		</div>
@@ -128,6 +166,17 @@ function createUI(): void {
 // ============================================================================
 
 function attachEventListeners(): void {
+	// Menu toggle (for mobile)
+	const menuToggle = document.getElementById('menu-toggle') as HTMLButtonElement
+	const toolbarMenu = document.getElementById('toolbar-menu') as HTMLDivElement
+
+	menuToggle.addEventListener('click', () => {
+		isMenuOpen = !isMenuOpen
+		menuToggle.setAttribute('aria-expanded', String(isMenuOpen))
+		toolbarMenu.classList.toggle('is-open', isMenuOpen)
+		menuToggle.textContent = isMenuOpen ? '✕' : '☰'
+	})
+
 	// File input
 	const fileInput = document.getElementById('file-input') as HTMLInputElement
 	const btnOpen = document.getElementById('btn-open') as HTMLButtonElement
@@ -169,25 +218,31 @@ function attachEventListeners(): void {
 	btnFitWidth.addEventListener('click', () => editor?.fitToWidth())
 	btnFitPage.addEventListener('click', () => editor?.fitToPage())
 
-	// Text mode buttons
+	// Mode buttons - unified mode switching
+	const btnModePan = document.getElementById('btn-mode-pan') as HTMLButtonElement
 	const btnModeSelect = document.getElementById('btn-mode-select') as HTMLButtonElement
 	const btnModeEdit = document.getElementById('btn-mode-edit') as HTMLButtonElement
 	const btnSearch = document.getElementById('btn-search') as HTMLButtonElement
 
-	btnModeSelect.addEventListener('click', handleSelectMode)
-	btnModeEdit.addEventListener('click', handleEditMode)
+	btnModePan.addEventListener('click', () => setMode('pan'))
+	btnModeSelect.addEventListener('click', () => setMode('text-select'))
+	btnModeEdit.addEventListener('click', () => setMode('text-edit'))
 	btnSearch.addEventListener('click', handleSearch)
 
-	// Drawing tools (Tier 3)
+	// Drawing tools
 	const btnDrawPen = document.getElementById('btn-draw-pen') as HTMLButtonElement
 	const btnDrawHighlight = document.getElementById('btn-draw-highlight') as HTMLButtonElement
 	const btnDrawEraser = document.getElementById('btn-draw-eraser') as HTMLButtonElement
+	const btnDrawUndo = document.getElementById('btn-draw-undo') as HTMLButtonElement
+	const btnDrawRedo = document.getElementById('btn-draw-redo') as HTMLButtonElement
 
-	btnDrawPen.addEventListener('click', handlePenTool)
-	btnDrawHighlight.addEventListener('click', handleHighlightTool)
-	btnDrawEraser.addEventListener('click', handleEraserTool)
+	btnDrawPen.addEventListener('click', () => setMode('draw-pen'))
+	btnDrawHighlight.addEventListener('click', () => setMode('draw-highlighter'))
+	btnDrawEraser.addEventListener('click', () => setMode('draw-eraser'))
+	btnDrawUndo.addEventListener('click', handleDrawingUndo)
+	btnDrawRedo.addEventListener('click', handleDrawingRedo)
 
-	// Page management (Tier 3)
+	// Page management
 	const btnAddPage = document.getElementById('btn-add-page') as HTMLButtonElement
 	const btnDeletePage = document.getElementById('btn-delete-page') as HTMLButtonElement
 	const btnRotatePage = document.getElementById('btn-rotate-page') as HTMLButtonElement
@@ -341,20 +396,26 @@ function handleDocumentLoad(fileName: string, pageCount: number): void {
 	// Render first page
 	renderCurrentPage()
 
-	// Initialize text layer in select mode by default
-	const textLayer = editor?.getTextLayer()
-	if (textLayer) {
-		textLayer.setEditMode('select')
-		updateModeButtons('select')
-	}
+	// Initialize to pan mode (safest default for mobile)
+	setMode('pan')
 
-	// Check for form fields (Tier 3)
+	// Check for form fields
 	if (editor?.hasFormFields()) {
 		updateFormStatus(true)
 		showToast(`Loaded: ${fileName} (${pageCount} pages) - Form fields detected`)
 	} else {
 		updateFormStatus(false)
 		showToast(`Loaded: ${fileName} (${pageCount} pages)`)
+	}
+
+	// Close the mobile menu after loading
+	isMenuOpen = false
+	const menuToggle = document.getElementById('menu-toggle') as HTMLButtonElement
+	const toolbarMenu = document.getElementById('toolbar-menu') as HTMLDivElement
+	if (menuToggle && toolbarMenu) {
+		menuToggle.setAttribute('aria-expanded', 'false')
+		toolbarMenu.classList.remove('is-open')
+		menuToggle.textContent = '☰'
 	}
 }
 
@@ -454,26 +515,27 @@ function handleKeyboard(event: KeyboardEvent): void {
 				handleSearch()
 			}
 			break
-	}
-}
-
-function handleSelectMode(): void {
-	if (!editor) return
-	const textLayer = editor.getTextLayer()
-	if (textLayer) {
-		textLayer.setEditMode('select')
-		updateModeButtons('select')
-		showToast('Text selection mode')
-	}
-}
-
-function handleEditMode(): void {
-	if (!editor) return
-	const textLayer = editor.getTextLayer()
-	if (textLayer) {
-		textLayer.setEditMode('edit')
-		updateModeButtons('edit')
-		showToast('Text edit mode - double-click to edit')
+		case 'z':
+			// Undo with Ctrl/Cmd+Z
+			if ((event.ctrlKey || event.metaKey) && !event.shiftKey) {
+				if (currentMode.startsWith('draw-')) {
+					event.preventDefault()
+					handleDrawingUndo()
+				}
+			}
+			// Redo with Ctrl/Cmd+Shift+Z
+			if ((event.ctrlKey || event.metaKey) && event.shiftKey) {
+				if (currentMode.startsWith('draw-')) {
+					event.preventDefault()
+					handleDrawingRedo()
+				}
+			}
+			break
+		case 'Escape':
+			// Return to pan mode
+			event.preventDefault()
+			setMode('pan')
+			break
 	}
 }
 
@@ -492,6 +554,175 @@ function handleSearch(): void {
 			editor.goToPage(firstResult.pageNumber)
 			showToast(`Found ${results.length} matches`)
 		}
+	}
+}
+
+// ============================================================================
+// Unified Mode Switching
+// ============================================================================
+
+/**
+ * Set the current editing mode.
+ * Modes are mutually exclusive - only one can be active at a time.
+ *
+ * Modes:
+ * - 'pan': Default mode, scrolling and navigation
+ * - 'text-select': Text selection mode (overlay layer active)
+ * - 'text-edit': Text edit mode (double-click to edit)
+ * - 'draw-pen': Pen drawing tool
+ * - 'draw-highlighter': Highlighter drawing tool
+ * - 'draw-eraser': Eraser tool
+ */
+function setMode(mode: string): void {
+	if (!editor) return
+	if (currentMode === mode && mode !== 'pan') {
+		// Toggle off to pan mode if clicking same button
+		mode = 'pan'
+	}
+
+	currentMode = mode
+
+	// Deactivate all layers first
+	const textLayer = editor.getTextLayer()
+	const drawingLayer = editor.getDrawingLayer()
+
+	// Disable text layer if switching away from text modes
+	if (!mode.startsWith('text-')) {
+		textLayer?.setEditMode('none')
+		textLayer?.setVisible(false)
+	}
+
+	// Disable drawing layer if switching away from draw modes
+	if (!mode.startsWith('draw-')) {
+		editor.setDrawingEnabled(false)
+	}
+
+	// Now activate the selected mode
+	switch (mode) {
+		case 'pan':
+			// Just navigation mode - both layers inactive
+			showToast('Pan mode - scroll to navigate')
+			break
+
+		case 'text-select':
+			if (textLayer) {
+				textLayer.setVisible(true)
+				textLayer.setEditMode('select')
+			}
+			showToast('Text selection mode - drag to select')
+			break
+
+		case 'text-edit':
+			if (textLayer) {
+				textLayer.setVisible(true)
+				textLayer.setEditMode('edit')
+			}
+			showToast('Text edit mode - double-tap to edit')
+			break
+
+		case 'draw-pen':
+			editor.setDrawingEnabled(true)
+			if (drawingLayer) {
+				drawingLayer.setTool('pen')
+			}
+			showToast('Pen tool - draw on the page')
+			break
+
+		case 'draw-highlighter':
+			editor.setDrawingEnabled(true)
+			if (drawingLayer) {
+				drawingLayer.setTool('highlighter')
+			}
+			showToast('Highlighter tool')
+			break
+
+		case 'draw-eraser':
+			editor.setDrawingEnabled(true)
+			if (drawingLayer) {
+				drawingLayer.setTool('eraser')
+			}
+			showToast('Eraser tool - tap strokes to erase')
+			break
+	}
+
+	// Update all UI buttons
+	updateAllModeButtons()
+	updateStatusMode()
+}
+
+function updateAllModeButtons(): void {
+	// Get all mode buttons
+	const btnPan = document.getElementById('btn-mode-pan') as HTMLButtonElement
+	const btnSelect = document.getElementById('btn-mode-select') as HTMLButtonElement
+	const btnEdit = document.getElementById('btn-mode-edit') as HTMLButtonElement
+	const btnPen = document.getElementById('btn-draw-pen') as HTMLButtonElement
+	const btnHighlight = document.getElementById('btn-draw-highlight') as HTMLButtonElement
+	const btnEraser = document.getElementById('btn-draw-eraser') as HTMLButtonElement
+
+	// Remove active class from all
+	btnPan?.classList.remove('btn-active')
+	btnSelect?.classList.remove('btn-active')
+	btnEdit?.classList.remove('btn-active')
+	btnPen?.classList.remove('btn-active')
+	btnHighlight?.classList.remove('btn-active')
+	btnEraser?.classList.remove('btn-active')
+
+	// Add active class to current mode
+	switch (currentMode) {
+		case 'pan':
+			btnPan?.classList.add('btn-active')
+			break
+		case 'text-select':
+			btnSelect?.classList.add('btn-active')
+			break
+		case 'text-edit':
+			btnEdit?.classList.add('btn-active')
+			break
+		case 'draw-pen':
+			btnPen?.classList.add('btn-active')
+			break
+		case 'draw-highlighter':
+			btnHighlight?.classList.add('btn-active')
+			break
+		case 'draw-eraser':
+			btnEraser?.classList.add('btn-active')
+			break
+	}
+}
+
+function updateStatusMode(): void {
+	const statusMode = document.getElementById('status-mode') as HTMLSpanElement
+	if (!statusMode) return
+
+	const modeLabels: Record<string, string> = {
+		'pan': 'Pan',
+		'text-select': 'Select Text',
+		'text-edit': 'Edit Text',
+		'draw-pen': 'Pen',
+		'draw-highlighter': 'Highlighter',
+		'draw-eraser': 'Eraser',
+	}
+
+	statusMode.textContent = `Mode: ${modeLabels[currentMode] ?? 'Unknown'}`
+}
+
+function handleDrawingUndo(): void {
+	if (!editor) return
+	const drawingLayer = editor.getDrawingLayer()
+	if (drawingLayer) {
+		drawingLayer.undo()
+		renderCurrentPage()
+		showToast('Undo stroke')
+	}
+}
+
+function handleDrawingRedo(): void {
+	if (!editor) return
+	const drawingLayer = editor.getDrawingLayer()
+	if (drawingLayer) {
+		drawingLayer.redo()
+		renderCurrentPage()
+		showToast('Redo stroke')
 	}
 }
 
@@ -541,10 +772,13 @@ function updateControlsEnabled(enabled: boolean): void {
 		'btn-mode-select',
 		'btn-mode-edit',
 		'btn-search',
-		// Tier 3 controls
+		// Drawing controls
 		'btn-draw-pen',
 		'btn-draw-highlight',
 		'btn-draw-eraser',
+		'btn-draw-undo',
+		'btn-draw-redo',
+		// Page management controls
 		'btn-add-page',
 		'btn-delete-page',
 		'btn-rotate-page',
@@ -556,14 +790,6 @@ function updateControlsEnabled(enabled: boolean): void {
 			el.disabled = !enabled
 		}
 	}
-}
-
-function updateModeButtons(mode: 'select' | 'edit' | 'none'): void {
-	const btnSelect = document.getElementById('btn-mode-select') as HTMLButtonElement
-	const btnEdit = document.getElementById('btn-mode-edit') as HTMLButtonElement
-
-	btnSelect.classList.toggle('btn-active', mode === 'select')
-	btnEdit.classList.toggle('btn-active', mode === 'edit')
 }
 
 function updatePageInfo(currentPage: number, totalPages: number): void {
@@ -614,16 +840,6 @@ function updateFormStatus(hasForm: boolean): void {
 	}
 }
 
-function updateDrawingButtons(activeTool: 'pen' | 'highlighter' | 'eraser' | 'none'): void {
-	const btnPen = document.getElementById('btn-draw-pen') as HTMLButtonElement
-	const btnHighlight = document.getElementById('btn-draw-highlight') as HTMLButtonElement
-	const btnEraser = document.getElementById('btn-draw-eraser') as HTMLButtonElement
-
-	btnPen.classList.toggle('btn-active', activeTool === 'pen')
-	btnHighlight.classList.toggle('btn-active', activeTool === 'highlighter')
-	btnEraser.classList.toggle('btn-active', activeTool === 'eraser')
-}
-
 function showToast(message: string): void {
 	const toast = document.getElementById('toast') as HTMLElement
 
@@ -641,65 +857,7 @@ function showToast(message: string): void {
 }
 
 // ============================================================================
-// Drawing Handlers (Tier 3)
-// ============================================================================
-
-function handlePenTool(): void {
-	if (!editor) return
-	const drawingLayer = editor.getDrawingLayer()
-	if (drawingLayer) {
-		const isActive = drawingLayer.isActive() && drawingLayer.getState().currentTool === 'pen'
-		if (isActive) {
-			editor.setDrawingEnabled(false)
-			updateDrawingButtons('none')
-			showToast('Drawing mode disabled')
-		} else {
-			editor.setDrawingEnabled(true)
-			drawingLayer.setTool('pen')
-			updateDrawingButtons('pen')
-			showToast('Pen tool - draw on the PDF')
-		}
-	}
-}
-
-function handleHighlightTool(): void {
-	if (!editor) return
-	const drawingLayer = editor.getDrawingLayer()
-	if (drawingLayer) {
-		const isActive = drawingLayer.isActive() && drawingLayer.getState().currentTool === 'highlighter'
-		if (isActive) {
-			editor.setDrawingEnabled(false)
-			updateDrawingButtons('none')
-			showToast('Drawing mode disabled')
-		} else {
-			editor.setDrawingEnabled(true)
-			drawingLayer.setTool('highlighter')
-			updateDrawingButtons('highlighter')
-			showToast('Highlighter - highlight on the PDF')
-		}
-	}
-}
-
-function handleEraserTool(): void {
-	if (!editor) return
-	const drawingLayer = editor.getDrawingLayer()
-	if (drawingLayer) {
-		const isActive = drawingLayer.isActive() && drawingLayer.getState().currentTool === 'eraser'
-		if (isActive) {
-			editor.setDrawingEnabled(false)
-			updateDrawingButtons('none')
-			showToast('Drawing mode disabled')
-		} else {
-			editor.setDrawingEnabled(true)
-			drawingLayer.setTool('eraser')
-			updateDrawingButtons('eraser')
-			showToast('Eraser - remove strokes')
-		}
-	}
-}
-
-// ============================================================================
-// Page Management Handlers (Tier 3)
+// Page Management Handlers
 // ============================================================================
 
 function handleAddPage(): void {
