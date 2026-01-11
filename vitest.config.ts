@@ -18,4 +18,12 @@ export default defineConfig({
 			'~/src': resolve(__dirname, 'src'),
 		},
 	},
+	esbuild: {
+		target: 'esnext',
+	},
+	optimizeDeps: {
+		esbuildOptions: {
+			target: 'esnext',
+		},
+	},
 })

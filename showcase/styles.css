@@ -1,11 +1,12 @@
-/* Documenta - Showcase Styles */
-/* Mobile-first design - base styles are for mobile, media queries add desktop */
+/* Documenta - Mobile-First PDF Editor Showcase Styles */
+/* Base styles target mobile; desktop features added via media queries */
 
 :root {
 	--primary-color: #2563eb;
 	--primary-hover: #1d4ed8;
 	--danger-color: #dc2626;
 	--success-color: #16a34a;
+	--warning-color: #eab308;
 	--background: #f8fafc;
 	--surface: #ffffff;
 	--text-primary: #1e293b;
@@ -13,6 +14,25 @@
 	--border-color: #e2e8f0;
 	--toolbar-height: auto;
 	--min-touch-target: 44px;
+	--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+	--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+	--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+	--radius-sm: 6px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+	--transition-fast: 0.15s ease;
+	--transition-normal: 0.2s ease;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--background: #0f172a;
+		--surface: #1e293b;
+		--text-primary: #f1f5f9;
+		--text-secondary: #94a3b8;
+		--border-color: #334155;
+	}
 }
 
 * {
@@ -49,7 +69,10 @@ body {
 	overflow: hidden;
 }
 
-/* Toolbar - Mobile first with collapsible menu */
+/* ============================================================================
+   Toolbar - Mobile First with Collapsible Menu
+   ============================================================================ */
+
 .toolbar {
 	display: flex;
 	flex-wrap: wrap;
@@ -59,6 +82,8 @@ body {
 	background-color: var(--surface);
 	border-bottom: 1px solid var(--border-color);
 	flex-shrink: 0;
+	box-shadow: var(--shadow-sm);
+	z-index: 100;
 }
 
 .toolbar-header {
@@ -73,6 +98,7 @@ body {
 	font-weight: 600;
 	font-size: 16px;
 	color: var(--primary-color);
+	white-space: nowrap;
 }
 
 /* Menu toggle button - visible on mobile */
@@ -83,11 +109,12 @@ body {
 	width: var(--min-touch-target);
 	height: var(--min-touch-target);
 	border: 1px solid var(--border-color);
-	border-radius: 8px;
+	border-radius: var(--radius-md);
 	background-color: var(--surface);
 	cursor: pointer;
 	font-size: 20px;
 	touch-action: manipulation;
+	transition: all var(--transition-fast);
 }
 
 .menu-toggle:hover {
@@ -97,6 +124,7 @@ body {
 .menu-toggle[aria-expanded="true"] {
 	background-color: var(--primary-color);
 	color: white;
+	border-color: var(--primary-color);
 }
 
 /* Collapsible menu - hidden by default on mobile */
@@ -104,8 +132,8 @@ body {
 	display: none;
 	width: 100%;
 	flex-direction: column;
-	gap: 8px;
-	padding-top: 8px;
+	gap: 12px;
+	padding-top: 12px;
 	border-top: 1px solid var(--border-color);
 	margin-top: 8px;
 }
@@ -147,25 +175,28 @@ body {
 	gap: 4px;
 }
 
-/* Buttons - Touch-friendly sizing */
+/* ============================================================================
+   Buttons - Touch-Friendly Sizing
+   ============================================================================ */
+
 .btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 4px;
+	gap: 6px;
 	padding: 10px 14px;
 	min-height: var(--min-touch-target);
 	min-width: var(--min-touch-target);
 	border: 1px solid var(--border-color);
-	border-radius: 8px;
+	border-radius: var(--radius-md);
 	background-color: var(--surface);
 	color: var(--text-primary);
 	font-size: 14px;
 	font-weight: 500;
 	cursor: pointer;
-	transition: all 0.15s ease;
-	/* Prevent double-tap zoom on buttons */
+	transition: all var(--transition-fast);
 	touch-action: manipulation;
+	-webkit-tap-highlight-color: transparent;
 }
 
 .btn:hover:not(:disabled) {
@@ -175,6 +206,11 @@ body {
 
 .btn:active:not(:disabled) {
 	transform: scale(0.97);
+}
+
+.btn:focus-visible {
+	outline: 2px solid var(--primary-color);
+	outline-offset: 2px;
 }
 
 .btn:disabled {
@@ -195,7 +231,7 @@ body {
 
 .btn-icon {
 	padding: 10px;
-	font-size: 16px;
+	font-size: 18px;
 }
 
 .btn-active {
@@ -204,31 +240,67 @@ body {
 	color: white;
 }
 
-/* Input - Touch-friendly */
+/* Color buttons */
+.color-btn {
+	width: 32px;
+	height: 32px;
+	min-width: 32px;
+	min-height: 32px;
+	padding: 0;
+	border-radius: 50%;
+	border-width: 2px;
+}
+
+.color-btn.color-active {
+	box-shadow: 0 0 0 3px var(--primary-color);
+}
+
+/* ============================================================================
+   Inputs - Touch-Friendly
+   ============================================================================ */
+
 .input-page {
 	width: 50px;
 	padding: 8px;
 	min-height: var(--min-touch-target);
 	border: 1px solid var(--border-color);
-	border-radius: 6px;
+	border-radius: var(--radius-sm);
 	text-align: center;
 	font-size: 16px; /* Prevents iOS zoom on focus */
 	touch-action: manipulation;
+	background-color: var(--surface);
+	color: var(--text-primary);
+}
+
+.input-page:focus {
+	outline: 2px solid var(--primary-color);
+	outline-offset: -1px;
+	border-color: var(--primary-color);
+}
+
+.input-page:disabled {
+	opacity: 0.5;
+	background-color: var(--background);
 }
 
 .page-info {
 	font-size: 14px;
 	color: var(--text-secondary);
+	min-width: 40px;
 }
 
 .zoom-value {
 	font-size: 14px;
 	color: var(--text-secondary);
-	min-width: 45px;
+	min-width: 50px;
 	text-align: center;
+	font-variant-numeric: tabular-nums;
 }
 
-/* Main Content */
+/* ============================================================================
+   Main Content
+   ============================================================================ */
+
 .main-content {
 	display: flex;
 	flex: 1;
@@ -242,81 +314,101 @@ body {
 	overflow: auto;
 	display: flex;
 	justify-content: center;
+	align-items: flex-start;
 	padding: 12px;
 	background-color: #525659;
 	/* Enable momentum scrolling on iOS */
 	-webkit-overflow-scrolling: touch;
 	/* Allow pinch-to-zoom on viewer only */
-	touch-action: pan-x pan-y;
-}
-
-.page-canvas {
-	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
-	background-color: white;
-	/* Prevent canvas from being selected */
-	-webkit-touch-callout: none;
-}
-
-/* Page wrapper for text layer overlay */
-.page-wrapper {
+	touch-action: pan-x pan-y pinch-zoom;
 	position: relative;
-	display: inline-block;
 }
 
-/* Text layer overlay */
-.documenta-text-layer {
-	position: absolute;
-	top: 0;
-	left: 0;
-	cursor: text;
+.viewer-container.drag-over {
+	background-color: #3f4446;
 }
 
-/* Drawing layer overlay */
-.documenta-drawing-layer {
+.viewer-container.drag-over::after {
+	content: '📄 Drop PDF here';
 	position: absolute;
-	top: 0;
-	left: 0;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background-color: var(--primary-color);
+	color: white;
+	padding: 24px 48px;
+	border-radius: var(--radius-lg);
+	font-size: 18px;
+	font-weight: 600;
+	box-shadow: var(--shadow-lg);
 	pointer-events: none;
 }
 
-/* Welcome Screen */
+/* Page wrapper for layers */
+.page-wrapper {
+	position: relative;
+	display: inline-block;
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+	background-color: white;
+}
+
+.page-canvas {
+	display: block;
+}
+
+/* ============================================================================
+   Welcome Screen
+   ============================================================================ */
+
 .welcome {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 	text-align: center;
-	padding: 24px;
+	padding: 32px 24px;
 	color: white;
+	max-width: 400px;
 }
 
 .welcome h2 {
-	font-size: 20px;
+	font-size: 24px;
 	margin-bottom: 12px;
+	font-weight: 700;
 }
 
 .welcome p {
 	color: #94a3b8;
-	margin-bottom: 16px;
-	font-size: 14px;
+	margin-bottom: 20px;
+	font-size: 15px;
+	line-height: 1.6;
+}
+
+.welcome .btn {
+	font-size: 16px;
+	padding: 14px 28px;
 }
 
 .welcome-features {
-	font-size: 11px;
+	font-size: 12px;
 	color: #64748b;
-	margin-bottom: 12px;
+	margin-top: 24px;
+	margin-bottom: 0;
 }
 
-/* Status Bar - Mobile */
+/* ============================================================================
+   Status Bar - Mobile
+   ============================================================================ */
+
 .status-bar {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	gap: 4px;
-	padding: 6px 12px;
+	padding: 8px 12px;
 	background-color: var(--surface);
 	border-top: 1px solid var(--border-color);
-	font-size: 11px;
+	font-size: 12px;
 	color: var(--text-secondary);
 	text-align: center;
 }
@@ -332,16 +424,17 @@ body {
 .status-indicator {
 	display: flex;
 	align-items: center;
-	gap: 4px;
+	gap: 6px;
 }
 
 .status-mode {
 	background-color: var(--primary-color);
 	color: white;
-	padding: 2px 8px;
-	border-radius: 4px;
-	font-weight: 500;
+	padding: 3px 10px;
+	border-radius: var(--radius-sm);
+	font-weight: 600;
 	font-size: 10px;
+	letter-spacing: 0.5px;
 }
 
 .status-dot {
@@ -349,13 +442,17 @@ body {
 	height: 8px;
 	border-radius: 50%;
 	background-color: var(--success-color);
+	flex-shrink: 0;
 }
 
 .status-dot.unsaved {
-	background-color: var(--danger-color);
+	background-color: var(--warning-color);
 }
 
-/* File Input - Accessible and mobile-friendly */
+/* ============================================================================
+   Accessibility - File Input
+   ============================================================================ */
+
 .file-input-label {
 	position: absolute;
 	overflow: hidden;
@@ -372,22 +469,28 @@ body {
 	opacity: 0;
 }
 
-/* Toast - Mobile optimized */
+/* ============================================================================
+   Toast Notifications
+   ============================================================================ */
+
 .toast {
 	position: fixed;
 	bottom: 80px;
 	left: 50%;
 	transform: translateX(-50%);
-	padding: 10px 20px;
+	padding: 12px 24px;
 	background-color: var(--text-primary);
 	color: white;
-	border-radius: 8px;
-	font-size: 13px;
+	border-radius: var(--radius-md);
+	font-size: 14px;
+	font-weight: 500;
 	opacity: 0;
-	transition: opacity 0.3s ease;
+	transition: opacity var(--transition-normal);
 	pointer-events: none;
-	max-width: 90%;
+	max-width: calc(100% - 32px);
 	text-align: center;
+	box-shadow: var(--shadow-lg);
+	z-index: 1000;
 }
 
 .toast.visible {
@@ -395,8 +498,38 @@ body {
 }
 
 /* ============================================================================
+   Layer Styles (from library)
+   ============================================================================ */
+
+.documenta-canvas-layer {
+	display: block;
+}
+
+.documenta-text-layer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	cursor: text;
+}
+
+.documenta-text-layer::selection {
+	background-color: var(--selection-color, rgba(37, 99, 235, 0.3));
+}
+
+.documenta-text-span::selection {
+	background-color: var(--selection-color, rgba(37, 99, 235, 0.3));
+}
+
+.documenta-drawing-layer {
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+/* ============================================================================
    Desktop/Tablet Styles (min-width: 768px)
    ============================================================================ */
+
 @media (min-width: 768px) {
 	.toolbar {
 		flex-wrap: nowrap;
@@ -427,7 +560,7 @@ body {
 		padding-top: 0;
 		border-top: none;
 		margin-top: 0;
-		gap: 8px;
+		gap: 12px;
 		align-items: center;
 	}
 
@@ -457,25 +590,26 @@ body {
 	.toolbar-divider {
 		display: block;
 		width: 1px;
-		height: 24px;
+		height: 28px;
 		background-color: var(--border-color);
 		margin: 0 4px;
 	}
 
 	.btn {
 		padding: 8px 16px;
-		min-height: 36px;
+		min-height: 38px;
 		min-width: auto;
 	}
 
 	.btn-icon {
 		padding: 8px;
-		min-width: 36px;
+		min-width: 38px;
+		font-size: 16px;
 	}
 
 	.input-page {
 		width: 60px;
-		min-height: 36px;
+		min-height: 38px;
 	}
 
 	.viewer-container {
@@ -487,7 +621,7 @@ body {
 	}
 
 	.welcome h2 {
-		font-size: 24px;
+		font-size: 28px;
 	}
 
 	.welcome p {
@@ -498,7 +632,6 @@ body {
 		flex-direction: row;
 		justify-content: space-between;
 		padding: 8px 16px;
-		font-size: 12px;
 	}
 
 	.status-bar-left {
@@ -507,7 +640,61 @@ body {
 	}
 
 	.toast {
-		bottom: 80px;
-		font-size: 14px;
+		bottom: 60px;
+	}
+}
+
+/* ============================================================================
+   Large Desktop Styles (min-width: 1024px)
+   ============================================================================ */
+
+@media (min-width: 1024px) {
+	.toolbar {
+		padding: 10px 24px;
+	}
+
+	.toolbar-title {
+		font-size: 20px;
+	}
+
+	.viewer-container {
+		padding: 32px;
+	}
+}
+
+/* ============================================================================
+   Print Styles
+   ============================================================================ */
+
+@media print {
+	.toolbar,
+	.status-bar,
+	.toast,
+	.welcome {
+		display: none !important;
+	}
+
+	.main-content {
+		display: block;
+	}
+
+	.viewer-container {
+		overflow: visible;
+		background: white;
+		padding: 0;
+	}
+}
+
+/* ============================================================================
+   Reduced Motion
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
 	}
 }

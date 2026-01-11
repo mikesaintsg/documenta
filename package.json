@@ -14,6 +14,7 @@
 		"test": "npm run decache && vitest run --no-cache",
 		"format": "eslint . --fix",
 		"show": "npm run build:showcase && npm run copy:showcase && npm run clean:showcase",
+		"fixtures": "npx tsx scripts/generate-fixtures.ts",
 		"clean:dist": "node -e \"try{require('fs').rmSync('dist',{recursive:true,force:true})}catch(e){}\"",
 		"clean:showcase": "node -e \"try{require('fs').rmSync('dist/showcase',{recursive:true,force:true})}catch(e){}\"",
 		"copy:showcase": "node -e \"try{require('fs').cpSync('dist/showcase/index.html','showcase.html',{force:true});console.log('Created: showcase.html')}catch(e){throw e}\"",

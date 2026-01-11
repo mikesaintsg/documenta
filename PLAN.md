@@ -1,8 +1,8 @@
 # Project Plan: Documenta
 
-> **Status:** Phase 0 of 6 — Clean Slate
+> **Status:** Phase 6 of 6 — Advanced Features (Core Complete)
 > **Last Updated:** 2026-01-11
-> **Next Milestone:** Foundation complete with types and tooling
+> **Next Milestone:** Documentation and Showcase
 
 ## Vision
 
@@ -88,12 +88,12 @@ The **LayerStack** enforces this by:
 
 | # | Phase | Status | Description |
 |---|-------|--------|-------------|
-| 1 | Foundation | ⏳ Pending | Types, project structure, tooling |
-| 2 | Core Document | ⏳ Pending | PDF loading, rendering, navigation |
-| 3 | Layer System | ⏳ Pending | LayerStack, CanvasLayer, coordinate system |
-| 4 | Text Layer | ⏳ Pending | Text extraction, selection, inline editing |
-| 5 | Drawing Layer | ⏳ Pending | Pen, highlighter, eraser with touch support |
-| 6 | Advanced Features | ⏳ Pending | Forms, annotations, page management |
+| 1 | Foundation | ✅ Complete | Types, project structure, tooling |
+| 2 | Core Document | ✅ Complete | PDF loading, rendering, navigation |
+| 3 | Layer System | ✅ Complete | LayerStack, CanvasLayer, coordinate system |
+| 4 | Text Layer | ✅ Complete | Text extraction, selection, inline editing |
+| 5 | Drawing Layer | ✅ Complete | Pen, highlighter, eraser with touch support |
+| 6 | Advanced Features | ✅ Complete | Forms, annotations, page management |
 
 **Status Legend:**
 - ✅ Complete
