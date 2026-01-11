@@ -16,6 +16,16 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			'~/src': resolve(__dirname, 'src'),
+			// Mock mupdf for testing since it uses WASM and top-level await
+			'mupdf': resolve(__dirname, 'tests/__mocks__/mupdf.ts'),
+		},
+	},
+	esbuild: {
+		target: 'esnext',
+	},
+	optimizeDeps: {
+		esbuildOptions: {
+			target: 'esnext',
 		},
 	},
 })
