@@ -3,6 +3,8 @@
  * @module tests/setup
  */
 
+import type { PdfDocumentInterface, PdfPageInterface, TextBlock, PageRotation, PageDimensions } from '~/src/types.js'
+
 /**
  * Create a mock HTML element for testing
  *
@@ -71,4 +73,130 @@ export function createMockCanvas(width = 100, height = 100): HTMLCanvasElement {
 	canvas.width = width
 	canvas.height = height
 	return canvas
+}
+
+/**
+ * Create a mock PDF buffer that simulates a valid PDF structure
+ *
+ * @returns ArrayBuffer with mock PDF data
+ */
+export function createMockPdfBuffer(): ArrayBuffer {
+	// Create a minimal PDF-like structure
+	const pdfHeader = '%PDF-1.4\n'
+	const encoder = new TextEncoder()
+	const data = encoder.encode(pdfHeader + '\n%%EOF')
+	return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+}
+
+/**
+ * Create a mock PDF page for testing
+ *
+ * @param pageNumber - Page number
+ * @param width - Page width
+ * @param height - Page height
+ * @returns Mock PdfPageInterface
+ */
+export function createMockPdfPage(pageNumber = 1, width = 612, height = 792): PdfPageInterface {
+	return {
+		pageNumber,
+		width,
+		height,
+		rotation: 0 as PageRotation,
+		render(_ctx: CanvasRenderingContext2D, _scale: number): void {
+			// No-op for testing
+		},
+		getText(): string {
+			return `Sample text for page ${pageNumber}`
+		},
+		getTextBlocks(): readonly TextBlock[] {
+			return [{
+				id: `block-${pageNumber}-1`,
+				bounds: { x: 50, y: 50, width: 200, height: 20 },
+				lines: [{
+					id: `line-${pageNumber}-1`,
+					bounds: { x: 50, y: 50, width: 200, height: 20 },
+					characters: [
+						{
+							char: 'T',
+							bounds: { x: 50, y: 50, width: 10, height: 20 },
+							fontSize: 12,
+							fontName: 'Helvetica',
+							color: { r: 0, g: 0, b: 0 },
+						},
+						{
+							char: 'e',
+							bounds: { x: 60, y: 50, width: 10, height: 20 },
+							fontSize: 12,
+							fontName: 'Helvetica',
+							color: { r: 0, g: 0, b: 0 },
+						},
+						{
+							char: 's',
+							bounds: { x: 70, y: 50, width: 10, height: 20 },
+							fontSize: 12,
+							fontName: 'Helvetica',
+							color: { r: 0, g: 0, b: 0 },
+						},
+						{
+							char: 't',
+							bounds: { x: 80, y: 50, width: 10, height: 20 },
+							fontSize: 12,
+							fontName: 'Helvetica',
+							color: { r: 0, g: 0, b: 0 },
+						},
+					],
+				}],
+			}]
+		},
+		destroy(): void {
+			// No-op for testing
+		},
+	}
+}
+
+/**
+ * Create a mock PDF document for testing
+ *
+ * @param pageCount - Number of pages
+ * @param fileName - Document file name
+ * @returns Mock PdfDocumentInterface
+ */
+export function createMockPdfDocument(pageCount = 3, fileName = 'test.pdf'): PdfDocumentInterface {
+	let loaded = true
+	const pages = new Map<number, PdfPageInterface>()
+
+	return {
+		isLoaded(): boolean {
+			return loaded
+		},
+		getPageCount(): number {
+			return pageCount
+		},
+		getFileName(): string | undefined {
+			return fileName
+		},
+		async loadFromBuffer(_buffer: ArrayBuffer, _fileName?: string): Promise<void> {
+			loaded = true
+		},
+		getPage(pageNumber: number): PdfPageInterface {
+			if (!pages.has(pageNumber)) {
+				pages.set(pageNumber, createMockPdfPage(pageNumber))
+			}
+			return pages.get(pageNumber)!
+		},
+		getPageDimensions(pageNumber: number): PageDimensions {
+			const page = this.getPage(pageNumber)
+			return { width: page.width, height: page.height }
+		},
+		getPageRotation(_pageNumber: number): PageRotation {
+			return 0
+		},
+		toArrayBuffer(): ArrayBuffer {
+			return createMockPdfBuffer()
+		},
+		destroy(): void {
+			loaded = false
+			pages.clear()
+		},
+	}
 }

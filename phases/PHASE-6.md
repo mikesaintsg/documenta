@@ -16,23 +16,25 @@ Implement form filling, annotations, and page management. By end of phase, the l
 | 6.1 | Form layer | ✅ Done | — |
 | 6.2 | Annotation layer | ✅ Done | — |
 | 6.3 | Page management | ⏳ Pending | — |
-| 6.4 | Showcase demo | ⏳ Pending | — |
+| 6.4 | Showcase demo | ✅ Done | — |
 | 6.5 | Documentation | ⏳ Pending | — |
-| 6.6 | Integration tests | ⏳ Pending | — |
+| 6.6 | Integration tests | ✅ Done | — |
 
 **Status Legend:**
 - ✅ Done
 - 🔄 Active
 - ⏳ Pending
 
-## Current Focus: Phase Complete (core layers)
+## Current Focus: Showcase and Integration Tests Complete
 
 Core form and annotation layer functionality is implemented:
 - FormLayer with text, checkbox, radio, dropdown support
 - AnnotationLayer with all annotation types
 - Selection and event handling
+- Mobile-first showcase demo
+- Integration tests for all core layers
 
-Page management, showcase demo, and documentation are deferred.
+Page management and documentation are deferred.
 
 ---
 
@@ -81,14 +83,15 @@ Page management, showcase demo, and documentation are deferred.
 
 ### Implementation Checklist
 
-- [ ] Create `showcase/index.html` with semantic markup
-- [ ] Create `showcase/main.ts` entry point
-- [ ] Create `showcase/styles.css` with mobile-first styles
-- [ ] Build toolbar with mode switching
-- [ ] Build page navigation controls
-- [ ] Build zoom controls
-- [ ] Build tool options panel
-- [ ] Configure Vite to output single HTML file
+- [x] Create `showcase/index.html` with semantic markup
+- [x] Create `showcase/main.ts` entry point
+- [x] Create `showcase/styles.css` with mobile-first styles
+- [x] Build toolbar with mode switching
+- [x] Build page navigation controls
+- [x] Build zoom controls
+- [x] Build tool options panel (drawing tools)
+- [x] Configure Vite to output single HTML file
+- [x] Generate `showcase.html` single-file artifact
 
 ---
 
@@ -108,12 +111,12 @@ Page management, showcase demo, and documentation are deferred.
 
 ### Implementation Checklist
 
-- [ ] Create `tests/integration/PdfEditor.test.ts`
-- [ ] Create `tests/integration/TextLayer.test.ts`
-- [ ] Create `tests/integration/DrawingLayer.test.ts`
-- [ ] Create `tests/integration/FormLayer.test.ts`
-- [ ] Test load → edit → save workflow
-- [ ] Test mobile gestures in mobile viewport
+- [x] Create `tests/integration/PdfEditor.integration.test.ts`
+- [x] Create `tests/integration/TextLayer.integration.test.ts`
+- [x] Create `tests/integration/DrawingLayer.integration.test.ts`
+- [x] Create `tests/integration/FormLayer.integration.test.ts`
+- [x] Test load → edit → save workflow
+- [ ] Test mobile gestures in mobile viewport (deferred)
 
 ## Phase Completion Criteria
 
@@ -123,8 +126,8 @@ Page management, showcase demo, and documentation are deferred.
 - [x] `npm run check` passes
 - [x] `npm run format` passes
 - [x] `npm run build` passes
-- [x] `npm run test` passes
+- [x] `npm run test` passes (642 tests)
+- [x] Showcase demo created
+- [x] Integration tests created (90 new integration tests)
 - [ ] Page management (deferred)
-- [ ] Showcase demo (deferred)
 - [ ] Documentation (deferred)
-- [ ] Integration tests (deferred)
