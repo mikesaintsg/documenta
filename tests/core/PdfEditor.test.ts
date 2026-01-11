@@ -5,15 +5,109 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { PdfEditor } from '~/src/core/PdfEditor.js'
-import type { EditorMode, EditorOptions } from '~/src/types.js'
+import type { EditorMode, EditorOptions, PdfDocumentInterface, PdfPageInterface, PageDimensions, PageRotation, TextBlock } from '~/src/types.js'
 import { createMockElement, createMockFile } from '../setup.js'
 import { DEFAULT_ZOOM, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from '~/src/constants.js'
 
-// mupdf is mocked globally via vitest.config.ts alias
+// Mock PdfPage for testing
+class MockPdfPage implements PdfPageInterface {
+	readonly pageNumber: number
+	readonly width: number
+	readonly height: number
+	readonly rotation: PageRotation = 0
+
+	constructor(pageNumber: number, width = 612, height = 792) {
+		this.pageNumber = pageNumber
+		this.width = width
+		this.height = height
+	}
+
+	render(_ctx: CanvasRenderingContext2D, _scale: number): void {
+		// No-op for testing
+	}
+
+	getText(): string {
+		return `Page ${this.pageNumber} text`
+	}
+
+	getTextBlocks(): readonly TextBlock[] {
+		return []
+	}
+
+	destroy(): void {
+		// No-op
+	}
+}
+
+// Mock PdfDocument for testing
+class MockPdfDocument implements PdfDocumentInterface {
+	#loaded = false
+	#fileName: string | undefined
+	#pages: MockPdfPage[] = []
+	#buffer: ArrayBuffer | undefined
+
+	isLoaded(): boolean {
+		return this.#loaded
+	}
+
+	getPageCount(): number {
+		return this.#pages.length
+	}
+
+	getFileName(): string | undefined {
+		return this.#fileName
+	}
+
+	async loadFromBuffer(buffer: ArrayBuffer, fileName?: string): Promise<void> {
+		this.#buffer = buffer
+		this.#fileName = fileName
+		this.#loaded = true
+		// Create mock pages based on buffer size
+		const pageCount = Math.max(1, Math.floor(buffer.byteLength / 1000) || 3)
+		this.#pages = []
+		for (let i = 1; i <= pageCount; i++) {
+			this.#pages.push(new MockPdfPage(i))
+		}
+	}
+
+	getPage(pageNumber: number): PdfPageInterface {
+		if (!this.#loaded) {
+			throw new Error('No document loaded')
+		}
+		if (pageNumber < 1 || pageNumber > this.#pages.length) {
+			throw new Error(`Invalid page number: ${pageNumber}`)
+		}
+		return this.#pages[pageNumber - 1]!
+	}
+
+	getPageDimensions(pageNumber: number): PageDimensions {
+		const page = this.getPage(pageNumber)
+		return { width: page.width, height: page.height }
+	}
+
+	getPageRotation(_pageNumber: number): PageRotation {
+		return 0
+	}
+
+	toArrayBuffer(): ArrayBuffer {
+		if (!this.#loaded || !this.#buffer) {
+			throw new Error('No document loaded')
+		}
+		return this.#buffer
+	}
+
+	destroy(): void {
+		this.#loaded = false
+		this.#pages = []
+		this.#buffer = undefined
+		this.#fileName = undefined
+	}
+}
 
 describe('PdfEditor', () => {
 	let container: HTMLElement
 	let editor: PdfEditor
+	let mockDocument: MockPdfDocument
 
 	beforeEach(() => {
 		container = createMockElement()
@@ -23,7 +117,8 @@ describe('PdfEditor', () => {
 		Object.defineProperty(container, 'clientHeight', { value: 600 })
 		document.body.appendChild(container)
 
-		editor = new PdfEditor({ container })
+		mockDocument = new MockPdfDocument()
+		editor = new PdfEditor({ container, document: mockDocument })
 	})
 
 	afterEach(() => {
@@ -55,6 +150,7 @@ describe('PdfEditor', () => {
 		it('accepts initial mode option', () => {
 			const customEditor = new PdfEditor({
 				container: createMockElement(),
+				document: new MockPdfDocument(),
 				initialMode: 'text',
 			})
 			expect(customEditor.getMode()).toBe('text')
@@ -64,6 +160,7 @@ describe('PdfEditor', () => {
 		it('accepts initial zoom option', () => {
 			const customEditor = new PdfEditor({
 				container: createMockElement(),
+				document: new MockPdfDocument(),
 				initialZoom: 1.5,
 			})
 			expect(customEditor.getZoom()).toBe(1.5)
@@ -73,6 +170,7 @@ describe('PdfEditor', () => {
 		it('clamps initial zoom to valid range', () => {
 			const customEditor = new PdfEditor({
 				container: createMockElement(),
+				document: new MockPdfDocument(),
 				initialZoom: 100, // Way above MAX_ZOOM
 			})
 			expect(customEditor.getZoom()).toBe(MAX_ZOOM)
@@ -89,6 +187,7 @@ describe('PdfEditor', () => {
 
 			const customEditor = new PdfEditor({
 				container: createMockElement(),
+				document: new MockPdfDocument(),
 				onLoad,
 				onPageChange,
 				onZoomChange,
@@ -525,7 +624,7 @@ describe('PdfEditor', () => {
 		})
 
 		it('loadFromBuffer accepts ArrayBuffer', async() => {
-			// This will use the mocked mupdf
+			// Uses injected MockPdfDocument
 			const buffer = new ArrayBuffer(100)
 			await expect(editor.loadFromBuffer(buffer, 'test.pdf')).resolves.not.toThrow()
 		})

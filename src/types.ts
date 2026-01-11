@@ -1462,6 +1462,12 @@ export interface EditorOptions {
 	/** Default author for annotations */
 	readonly defaultAuthor?: string
 
+	/** Optional PdfDocument implementation for testing/customization */
+	readonly document?: PdfDocumentInterface
+
+	/** Optional factory for creating PdfDocument (for lazy loading mupdf) */
+	readonly documentFactory?: () => PdfDocumentInterface
+
 	/** Callback for document load events */
 	readonly onLoad?: LoadCallback
 

@@ -6,12 +6,13 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { PdfEditor } from '~/src/core/PdfEditor.js'
-import { createMockElement, createMockFile, createMockPdfBuffer } from '../setup.js'
-import type { EditorMode } from '~/src/types.js'
+import { createMockElement, createMockFile, createMockPdfBuffer, createMockPdfDocument } from '../setup.js'
+import type { EditorMode, PdfDocumentInterface } from '~/src/types.js'
 
 describe('PdfEditor Integration', () => {
 	let container: HTMLElement
 	let editor: PdfEditor
+	let mockDocument: PdfDocumentInterface
 
 	beforeEach(() => {
 		container = createMockElement()
@@ -19,7 +20,8 @@ describe('PdfEditor Integration', () => {
 		container.style.height = '600px'
 		document.body.appendChild(container)
 
-		editor = new PdfEditor({ container })
+		mockDocument = createMockPdfDocument()
+		editor = new PdfEditor({ container, document: mockDocument })
 	})
 
 	afterEach(() => {
@@ -288,6 +290,7 @@ describe('PdfEditor Integration', () => {
 
 			const editorWithCallbacks = new PdfEditor({
 				container,
+				document: createMockPdfDocument(),
 				onLoad: () => { callbacks.loadCalled = true },
 				onPageChange: () => { callbacks.pageChangeCalled = true },
 				onZoomChange: () => { callbacks.zoomChangeCalled = true },

@@ -25,6 +25,7 @@ import type {
 	DrawingLayerInterface,
 	FormLayerInterface,
 	AnnotationLayerInterface,
+	PdfDocumentInterface,
 } from '../types.js'
 import {
 	DEFAULT_ZOOM,
@@ -43,9 +44,19 @@ import {
 	isValidPdfFile,
 	debounce,
 } from '../helpers.js'
-import { PdfDocument } from './document/PdfDocument.js'
 import { FileManager } from './file/FileManager.js'
 import { CanvasLayer } from './layers/CanvasLayer.js'
+
+// Dynamic import for PdfDocument to avoid WASM loading at import time
+let PdfDocumentClass: (new () => PdfDocumentInterface) | undefined
+
+async function getPdfDocumentClass(): Promise<new () => PdfDocumentInterface> {
+	if (!PdfDocumentClass) {
+		const module = await import('./document/PdfDocument.js')
+		PdfDocumentClass = module.PdfDocument as unknown as new () => PdfDocumentInterface
+	}
+	return PdfDocumentClass
+}
 
 /**
  * PdfEditor - Main PDF editor class
@@ -71,7 +82,8 @@ import { CanvasLayer } from './layers/CanvasLayer.js'
 export class PdfEditor implements EditorInterface {
 	// Core components
 	#container: HTMLElement
-	#document: PdfDocument
+	#document: PdfDocumentInterface | undefined
+	#documentFactory: (() => PdfDocumentInterface) | undefined
 	#fileManager: FileManager
 	#canvasLayer: CanvasLayer
 
@@ -105,16 +117,14 @@ export class PdfEditor implements EditorInterface {
 		this.#container.style.overflow = 'hidden'
 
 		// Initialize core components
-		this.#document = new PdfDocument()
+		this.#document = options.document
+		this.#documentFactory = options.documentFactory
 		this.#fileManager = new FileManager()
 		this.#canvasLayer = new CanvasLayer(this.#container)
 
 		// Set initial state
 		this.#mode = options.initialMode ?? 'pan'
 		this.#zoom = clampZoom(options.initialZoom ?? DEFAULT_ZOOM, MIN_ZOOM, MAX_ZOOM)
-
-		// Wire up canvas layer
-		this.#canvasLayer.setDocument(this.#document)
 
 		// Register option callbacks
 		if (options.onLoad) {
@@ -153,9 +163,9 @@ export class PdfEditor implements EditorInterface {
 
 	getState(): DocumentState {
 		return {
-			isLoaded: this.#document.isLoaded(),
-			fileName: this.#document.getFileName(),
-			pageCount: this.#document.getPageCount(),
+			isLoaded: this.#document?.isLoaded() ?? false,
+			fileName: this.#document?.getFileName(),
+			pageCount: this.#document?.getPageCount() ?? 0,
 			currentPage: this.#currentPage,
 			zoom: this.#zoom,
 			mode: this.#mode,
@@ -164,7 +174,7 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	isLoaded(): boolean {
-		return this.#document.isLoaded()
+		return this.#document?.isLoaded() ?? false
 	}
 
 	getCurrentPage(): number {
@@ -172,7 +182,7 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	getPageCount(): number {
-		return this.#document.getPageCount()
+		return this.#document?.getPageCount() ?? 0
 	}
 
 	getZoom(): number {
@@ -188,7 +198,7 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	getFileName(): string | undefined {
-		return this.#document.getFileName()
+		return this.#document?.getFileName()
 	}
 
 	// =========================================================================
@@ -206,6 +216,26 @@ export class PdfEditor implements EditorInterface {
 	// Document Operations
 	// =========================================================================
 
+	async #ensureDocument(): Promise<PdfDocumentInterface> {
+		if (this.#document) {
+			return this.#document
+		}
+
+		// Use factory if provided
+		if (this.#documentFactory) {
+			this.#document = this.#documentFactory()
+		} else {
+			// Dynamically import PdfDocument
+			const PdfDocumentClass = await getPdfDocumentClass()
+			this.#document = new PdfDocumentClass()
+		}
+
+		// Wire up canvas layer
+		this.#canvasLayer.setDocument(this.#document)
+
+		return this.#document
+	}
+
 	async load(file: File): Promise<void> {
 		if (!isValidPdfFile(file)) {
 			const error = new Error(ERROR_MESSAGES.INVALID_FILE)
@@ -214,8 +244,9 @@ export class PdfEditor implements EditorInterface {
 		}
 
 		try {
+			const doc = await this.#ensureDocument()
 			const buffer = await this.#fileManager.loadFile(file)
-			await this.#document.loadFromBuffer(buffer, file.name)
+			await doc.loadFromBuffer(buffer, file.name)
 			this.#onDocumentLoaded()
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(ERROR_MESSAGES.LOAD_FAILED)
@@ -226,7 +257,8 @@ export class PdfEditor implements EditorInterface {
 
 	async loadFromBuffer(buffer: ArrayBuffer, fileName?: string): Promise<void> {
 		try {
-			await this.#document.loadFromBuffer(buffer, fileName)
+			const doc = await this.#ensureDocument()
+			await doc.loadFromBuffer(buffer, fileName)
 			this.#onDocumentLoaded()
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(ERROR_MESSAGES.LOAD_FAILED)
@@ -237,9 +269,10 @@ export class PdfEditor implements EditorInterface {
 
 	async loadFromUrl(url: string, fileName?: string): Promise<void> {
 		try {
+			const doc = await this.#ensureDocument()
 			const buffer = await this.#fileManager.loadUrl(url)
 			const name = fileName ?? url.split('/').pop() ?? 'document.pdf'
-			await this.#document.loadFromBuffer(buffer, name)
+			await doc.loadFromBuffer(buffer, name)
 			this.#onDocumentLoaded()
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(ERROR_MESSAGES.LOAD_FAILED)
@@ -256,8 +289,8 @@ export class PdfEditor implements EditorInterface {
 		this.renderPage(1)
 
 		// Notify listeners
-		const fileName = this.#document.getFileName() ?? 'document.pdf'
-		const pageCount = this.#document.getPageCount()
+		const fileName = this.#document?.getFileName() ?? 'document.pdf'
+		const pageCount = this.#document?.getPageCount() ?? 0
 		this.#notifyLoad(fileName, pageCount)
 		this.#notifyPageChange(1)
 	}
@@ -267,14 +300,14 @@ export class PdfEditor implements EditorInterface {
 	// =========================================================================
 
 	renderPage(pageNumber: number): void {
-		if (!this.#document.isLoaded()) return
+		if (!this.#document?.isLoaded()) return
 
 		const clampedPage = clampPageNumber(pageNumber, this.#document.getPageCount())
 		this.#canvasLayer.render(clampedPage, this.#zoom)
 	}
 
 	getPageDimensions(pageNumber: number): PageDimensions {
-		if (!this.#document.isLoaded()) {
+		if (!this.#document?.isLoaded()) {
 			return { width: 0, height: 0 }
 		}
 		return this.#document.getPageDimensions(pageNumber)
@@ -285,7 +318,7 @@ export class PdfEditor implements EditorInterface {
 	// =========================================================================
 
 	goToPage(pageNumber: number): void {
-		if (!this.#document.isLoaded()) return
+		if (!this.#document?.isLoaded()) return
 
 		const clampedPage = clampPageNumber(pageNumber, this.#document.getPageCount())
 		if (clampedPage === this.#currentPage) return
@@ -329,7 +362,7 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	fitToWidth(): void {
-		if (!this.#document.isLoaded()) return
+		if (!this.#document?.isLoaded()) return
 
 		const dims = this.getPageDimensions(this.#currentPage)
 		const containerWidth = this.#container.clientWidth
@@ -338,7 +371,7 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	fitToPage(): void {
-		if (!this.#document.isLoaded()) return
+		if (!this.#document?.isLoaded()) return
 
 		const dims = this.getPageDimensions(this.#currentPage)
 		const containerWidth = this.#container.clientWidth
@@ -367,7 +400,7 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	getPageRotation(pageNumber: number): PageRotation {
-		if (!this.#document.isLoaded()) return 0
+		if (!this.#document?.isLoaded()) return 0
 		return this.#document.getPageRotation(pageNumber)
 	}
 
@@ -381,7 +414,7 @@ export class PdfEditor implements EditorInterface {
 	// =========================================================================
 
 	async save(): Promise<void> {
-		if (!this.#document.isLoaded()) {
+		if (!this.#document?.isLoaded()) {
 			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
 		}
 
@@ -405,7 +438,7 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	async saveAs(): Promise<void> {
-		if (!this.#document.isLoaded()) {
+		if (!this.#document?.isLoaded()) {
 			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
 		}
 
@@ -427,7 +460,7 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	download(fileName?: string): void {
-		if (!this.#document.isLoaded()) {
+		if (!this.#document?.isLoaded()) {
 			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
 		}
 
@@ -437,7 +470,7 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	toArrayBuffer(): ArrayBuffer {
-		if (!this.#document.isLoaded()) {
+		if (!this.#document?.isLoaded()) {
 			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
 		}
 		return this.#document.toArrayBuffer()
@@ -472,7 +505,7 @@ export class PdfEditor implements EditorInterface {
 	// =========================================================================
 
 	getPageText(pageNumber: number): string {
-		if (!this.#document.isLoaded()) return ''
+		if (!this.#document?.isLoaded()) return ''
 		const page = this.#document.getPage(pageNumber)
 		return page.getText()
 	}
@@ -570,7 +603,7 @@ export class PdfEditor implements EditorInterface {
 	// =========================================================================
 
 	#handleResize(): void {
-		if (this.#document.isLoaded() && this.#currentPage > 0) {
+		if (this.#document?.isLoaded() && this.#currentPage > 0) {
 			const { width, height } = this.#container.getBoundingClientRect()
 			this.#canvasLayer.resize(width, height)
 		}
@@ -583,7 +616,7 @@ export class PdfEditor implements EditorInterface {
 	destroy(): void {
 		this.#resizeObserver.disconnect()
 		this.#canvasLayer.destroy()
-		this.#document.destroy()
+		this.#document?.destroy()
 
 		this.#loadListeners.clear()
 		this.#pageChangeListeners.clear()

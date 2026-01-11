@@ -157,12 +157,14 @@ export function createMockPdfPage(pageNumber = 1, width = 612, height = 792): Pd
 /**
  * Create a mock PDF document for testing
  *
- * @param pageCount - Number of pages
- * @param fileName - Document file name
+ * @param options - Configuration options
  * @returns Mock PdfDocumentInterface
  */
-export function createMockPdfDocument(pageCount = 3, fileName = 'test.pdf'): PdfDocumentInterface {
-	let loaded = true
+export function createMockPdfDocument(options: { pageCount?: number; fileName?: string; initiallyLoaded?: boolean } = {}): PdfDocumentInterface {
+	const { pageCount: defaultPageCount = 3, initiallyLoaded = false } = options
+	let loaded = initiallyLoaded
+	let currentFileName: string | undefined = initiallyLoaded ? (options.fileName ?? 'test.pdf') : undefined
+	let currentPageCount = initiallyLoaded ? defaultPageCount : 0
 	const pages = new Map<number, PdfPageInterface>()
 
 	return {
@@ -170,15 +172,20 @@ export function createMockPdfDocument(pageCount = 3, fileName = 'test.pdf'): Pdf
 			return loaded
 		},
 		getPageCount(): number {
-			return pageCount
+			return currentPageCount
 		},
 		getFileName(): string | undefined {
-			return fileName
+			return currentFileName
 		},
-		async loadFromBuffer(_buffer: ArrayBuffer, _fileName?: string): Promise<void> {
+		async loadFromBuffer(_buffer: ArrayBuffer, fileName?: string): Promise<void> {
 			loaded = true
+			currentFileName = fileName
+			currentPageCount = defaultPageCount
 		},
 		getPage(pageNumber: number): PdfPageInterface {
+			if (!loaded) {
+				throw new Error('No document loaded')
+			}
 			if (!pages.has(pageNumber)) {
 				pages.set(pageNumber, createMockPdfPage(pageNumber))
 			}
@@ -192,10 +199,15 @@ export function createMockPdfDocument(pageCount = 3, fileName = 'test.pdf'): Pdf
 			return 0
 		},
 		toArrayBuffer(): ArrayBuffer {
+			if (!loaded) {
+				throw new Error('No document loaded')
+			}
 			return createMockPdfBuffer()
 		},
 		destroy(): void {
 			loaded = false
+			currentFileName = undefined
+			currentPageCount = 0
 			pages.clear()
 		},
 	}
