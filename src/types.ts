@@ -114,7 +114,7 @@ export interface PageDimensions {
  * Page rotation in degrees clockwise
  *
  * @remarks
- * Only 90-degree increments are supported. 
+ * Only 90-degree increments are supported.
  */
 export type PageRotation = 0 | 90 | 180 | 270
 
@@ -157,7 +157,7 @@ export interface Viewport {
  * Editor interaction mode
  *
  * @remarks
- * Only one layer receives pointer events at a time based on mode: 
+ * Only one layer receives pointer events at a time based on mode:
  * - `pan` - No layer active, viewport panning enabled
  * - `text` - Text layer active for selection/editing
  * - `draw` - Drawing layer active for pen/highlighter/eraser
@@ -492,7 +492,7 @@ export interface CoordinateTransformInterface {
  * PDF page interface
  *
  * @remarks
- * Provides access to page content and rendering. 
+ * Provides access to page content and rendering.
  */
 export interface PdfPageInterface {
 	/** Page number (1-indexed) */
@@ -537,7 +537,7 @@ export interface PdfPageInterface {
  * PDF document interface
  *
  * @remarks
- * Wraps mupdf.PDFDocument with type-safe methods. 
+ * Wraps mupdf.PDFDocument with type-safe methods.
  */
 export interface PdfDocumentInterface {
 	/** Check if a document is loaded */
@@ -662,7 +662,7 @@ export interface FileManagerInterface {
  * Canvas layer interface for PDF rendering
  *
  * @remarks
- * Renders PDF pages to an HTML canvas element. 
+ * Renders PDF pages to an HTML canvas element.
  */
 export interface CanvasLayerInterface extends LayerInterface {
 	/** Get the canvas element */
@@ -893,7 +893,7 @@ export type StrokeEraseCallback = (strokeId: string) => void
  *
  * @remarks
  * Provides freehand drawing with pen, highlighter, and eraser tools.
- * Uses a separate overlay canvas for drawing. 
+ * Uses a separate overlay canvas for drawing.
  */
 export interface DrawingLayerInterface extends LayerInterface {
 	/** Get current drawing state */
@@ -1280,7 +1280,7 @@ export type AnnotationSelectCallback = (annotation: AnyAnnotation | undefined) =
  * Annotation layer interface
  *
  * @remarks
- * Manages annotations (notes, shapes, highlights) on PDF pages. 
+ * Manages annotations (notes, shapes, highlights) on PDF pages.
  */
 export interface AnnotationLayerInterface extends LayerInterface {
 	/**

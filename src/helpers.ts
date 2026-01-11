@@ -12,7 +12,7 @@ import type {
 	Rectangle,
 	Quad,
 	PageRotation,
-} from './types. js'
+} from './types.js'
 
 // ============================================================================
 // Core Utility Functions
@@ -56,7 +56,7 @@ export function generateId(): string {
  *
  * @remarks
  * Faster than distance() since it avoids Math.sqrt().
- * Use for distance comparisons where exact distance isn't needed. 
+ * Use for distance comparisons where exact distance isn't needed.
  *
  * @param x1 - First point X
  * @param y1 - First point Y
@@ -1378,7 +1378,7 @@ export function isPrimaryPointer(event: PointerEvent): boolean {
  * window.addEventListener('resize', debouncedResize)
  * ```
  */
-export function debounce<T extends (... args: readonly unknown[]) => void>(
+export function debounce<T extends(... args: readonly unknown[]) => void>(
 	fn:  T,
 	delay: number,
 ): (...args: Parameters<T>) => void {
@@ -1413,7 +1413,7 @@ export function debounce<T extends (... args: readonly unknown[]) => void>(
  * canvas.addEventListener('pointermove', throttledMove)
  * ```
  */
-export function throttle<T extends (...args: readonly unknown[]) => void>(
+export function throttle<T extends(...args: readonly unknown[]) => void>(
 	fn: T,
 	limit: number,
 ): (...args: Parameters<T>) => void {

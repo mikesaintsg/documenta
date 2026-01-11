@@ -3,10 +3,10 @@
  * @module constants
  *
  * Centralized constants for the PDF editor library.
- * All magic numbers are extracted here for maintainability. 
+ * All magic numbers are extracted here for maintainability.
  */
 
-import type { Color, PageSize } from './types. js'
+import type { Color, PageSize } from './types.js'
 
 // ============================================================================
 // Zoom Constants
@@ -293,7 +293,7 @@ export const DEFAULT_HIGHLIGHTER_COLOR:  Color = COLOR_YELLOW
 export const DEFAULT_FORM_HIGHLIGHT_COLOR: Color = {
 	r: 0.8,
 	g: 0.9,
-	b:  1. 0,
+	b: 1.0,
 } as const
 
 /**
