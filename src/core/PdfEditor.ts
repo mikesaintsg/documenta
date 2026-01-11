@@ -300,17 +300,19 @@ export class PdfEditor implements EditorInterface {
 	// =========================================================================
 
 	renderPage(pageNumber: number): void {
-		if (!this.#document?.isLoaded()) return
+		const doc = this.#document
+		if (!doc?.isLoaded()) return
 
-		const clampedPage = clampPageNumber(pageNumber, this.#document.getPageCount())
+		const clampedPage = clampPageNumber(pageNumber, doc.getPageCount())
 		this.#canvasLayer.render(clampedPage, this.#zoom)
 	}
 
 	getPageDimensions(pageNumber: number): PageDimensions {
-		if (!this.#document?.isLoaded()) {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
 			return { width: 0, height: 0 }
 		}
-		return this.#document.getPageDimensions(pageNumber)
+		return doc.getPageDimensions(pageNumber)
 	}
 
 	// =========================================================================
@@ -318,9 +320,10 @@ export class PdfEditor implements EditorInterface {
 	// =========================================================================
 
 	goToPage(pageNumber: number): void {
-		if (!this.#document?.isLoaded()) return
+		const doc = this.#document
+		if (!doc?.isLoaded()) return
 
-		const clampedPage = clampPageNumber(pageNumber, this.#document.getPageCount())
+		const clampedPage = clampPageNumber(pageNumber, doc.getPageCount())
 		if (clampedPage === this.#currentPage) return
 
 		this.#currentPage = clampedPage
@@ -400,8 +403,9 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	getPageRotation(pageNumber: number): PageRotation {
-		if (!this.#document?.isLoaded()) return 0
-		return this.#document.getPageRotation(pageNumber)
+		const doc = this.#document
+		if (!doc?.isLoaded()) return 0
+		return doc.getPageRotation(pageNumber)
 	}
 
 	movePage(_fromPage: number, _toPage: number): void {
@@ -438,13 +442,14 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	async saveAs(): Promise<void> {
-		if (!this.#document?.isLoaded()) {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
 			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
 		}
 
 		try {
 			const data = this.toArrayBuffer()
-			const fileName = this.#document.getFileName() ?? 'document.pdf'
+			const fileName = doc.getFileName() ?? 'document.pdf'
 			const handle = await this.#fileManager.saveAs(data, fileName)
 			if (handle) {
 				this.#fileHandle = handle
@@ -460,20 +465,22 @@ export class PdfEditor implements EditorInterface {
 	}
 
 	download(fileName?: string): void {
-		if (!this.#document?.isLoaded()) {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
 			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
 		}
 
 		const data = this.toArrayBuffer()
-		const name = fileName ?? this.#document.getFileName() ?? 'document.pdf'
+		const name = fileName ?? doc.getFileName() ?? 'document.pdf'
 		this.#fileManager.download(data, name)
 	}
 
 	toArrayBuffer(): ArrayBuffer {
-		if (!this.#document?.isLoaded()) {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
 			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
 		}
-		return this.#document.toArrayBuffer()
+		return doc.toArrayBuffer()
 	}
 
 	// =========================================================================
@@ -505,8 +512,9 @@ export class PdfEditor implements EditorInterface {
 	// =========================================================================
 
 	getPageText(pageNumber: number): string {
-		if (!this.#document?.isLoaded()) return ''
-		const page = this.#document.getPage(pageNumber)
+		const doc = this.#document
+		if (!doc?.isLoaded()) return ''
+		const page = doc.getPage(pageNumber)
 		return page.getText()
 	}
 
