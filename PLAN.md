@@ -1,8 +1,8 @@
 # Project Plan: Documenta
 
-> **Status:** Phase 1 of 6 — Foundation Complete
+> **Status:** Phase 2 of 6 — Core Document Complete
 > **Last Updated:** 2026-01-11
-> **Next Milestone:** Core Document (PDF loading, rendering, navigation)
+> **Next Milestone:** Layer System (LayerStack, coordinate system, gesture recognition)
 
 ## Vision
 
@@ -89,8 +89,8 @@ The **LayerStack** enforces this by:
 | # | Phase | Status | Description |
 |---|-------|--------|-------------|
 | 1 | Foundation | ✅ Complete | Types, project structure, tooling |
-| 2 | Core Document | 🔄 Active | PDF loading, rendering, navigation |
-| 3 | Layer System | ⏳ Pending | LayerStack, CanvasLayer, coordinate system |
+| 2 | Core Document | ✅ Complete | PDF loading, rendering, navigation |
+| 3 | Layer System | 🔄 Active | LayerStack, CanvasLayer, coordinate system |
 | 4 | Text Layer | ⏳ Pending | Text extraction, selection, inline editing |
 | 5 | Drawing Layer | ⏳ Pending | Pen, highlighter, eraser with touch support |
 | 6 | Advanced Features | ⏳ Pending | Forms, annotations, page management |

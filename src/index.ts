@@ -4,10 +4,20 @@
  *
  * @example
  * ```ts
- * import { clamp, colorToCss, isValidPdfFile } from 'documenta'
+ * import { createPdfEditor, clamp, colorToCss, isValidPdfFile } from 'documenta'
  * import type { EditorInterface, Point, Color } from 'documenta'
+ *
+ * const editor = createPdfEditor({
+ *   container: document.getElementById('editor')!,
+ *   onLoad: (fileName, pageCount) => {
+ *     console.log(`Loaded ${fileName} with ${pageCount} pages`)
+ *   }
+ * })
  * ```
  */
+
+// Export factory functions
+export * from './factories.js'
 
 // Export helper functions
 export * from './helpers.js'
