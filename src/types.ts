@@ -420,6 +420,21 @@ export interface GestureRecognizerInterface {
 	 */
 	onGesture(callback: GestureCallback): Unsubscribe
 
+	/**
+	 * Enable or disable mouse pan support
+	 * When enabled, mouse click-and-drag will emit pan events
+	 *
+	 * @param enabled - Whether to enable mouse pan
+	 */
+	setMousePanEnabled(enabled: boolean): void
+
+	/**
+	 * Check if mouse pan is enabled
+	 *
+	 * @returns Whether mouse pan is enabled
+	 */
+	isMousePanEnabled(): boolean
+
 	/** Clean up resources */
 	destroy(): void
 }
@@ -580,6 +595,39 @@ export interface PdfDocumentInterface {
 	 * @returns Rotation in degrees
 	 */
 	getPageRotation(pageNumber:  number): PageRotation
+
+	/**
+	 * Add a blank page to the document
+	 *
+	 * @param afterPage - Insert after this page (0 for beginning, -1 for end)
+	 * @param width - Page width in points (default: 612 = Letter)
+	 * @param height - Page height in points (default: 792 = Letter)
+	 * @returns The new page number (1-indexed)
+	 */
+	addBlankPage(afterPage?: number, width?: number, height?: number): number
+
+	/**
+	 * Delete a page from the document
+	 *
+	 * @param pageNumber - Page to delete (1-indexed)
+	 */
+	deletePage(pageNumber: number): void
+
+	/**
+	 * Rotate a page
+	 *
+	 * @param pageNumber - Page to rotate (1-indexed)
+	 * @param rotation - New rotation (0, 90, 180, or 270)
+	 */
+	rotatePage(pageNumber: number, rotation: PageRotation): void
+
+	/**
+	 * Move a page to a new position
+	 *
+	 * @param fromPage - Source page (1-indexed)
+	 * @param toPage - Destination position (1-indexed)
+	 */
+	movePage(fromPage: number, toPage: number): void
 
 	/**
 	 * Export document to ArrayBuffer

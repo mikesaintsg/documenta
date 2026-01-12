@@ -394,21 +394,21 @@ describe('PdfEditor', () => {
 		})
 	})
 
-	describe('page management (not implemented)', () => {
-		it('addBlankPage throws', () => {
-			expect(() => editor.addBlankPage()).toThrow('Not implemented')
+	describe('page management', () => {
+		it('addBlankPage throws when no document loaded', () => {
+			expect(() => editor.addBlankPage()).toThrow('No document is loaded')
 		})
 
-		it('deletePage throws', () => {
-			expect(() => editor.deletePage(1)).toThrow('Not implemented')
+		it('deletePage throws when no document loaded', () => {
+			expect(() => editor.deletePage(1)).toThrow('No document is loaded')
 		})
 
-		it('rotatePage throws', () => {
-			expect(() => editor.rotatePage(1, 90)).toThrow('Not implemented')
+		it('rotatePage throws when no document loaded', () => {
+			expect(() => editor.rotatePage(1, 90)).toThrow('No document is loaded')
 		})
 
-		it('movePage throws', () => {
-			expect(() => editor.movePage(1, 2)).toThrow('Not implemented')
+		it('movePage throws when no document loaded', () => {
+			expect(() => editor.movePage(1, 2)).toThrow('No document is loaded')
 		})
 	})
 

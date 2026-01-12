@@ -135,6 +135,21 @@ app.innerHTML = `
 					</button>
 				</div>
 			</section>
+			<div class="toolbar-divider"></div>
+			<section id="page-management" class="toolbar-section" aria-label="Page Management">
+				<span class="toolbar-section-label">Pages</span>
+				<div class="toolbar-group">
+					<button id="btn-add-page" class="btn btn-icon" aria-label="Add Blank Page" title="Add Page" disabled>
+						📄➕
+					</button>
+					<button id="btn-delete-page" class="btn btn-icon" aria-label="Delete Current Page" title="Delete Page" disabled>
+						📄➖
+					</button>
+					<button id="btn-rotate-page" class="btn btn-icon" aria-label="Rotate Page 90°" title="Rotate Page" disabled>
+						🔄
+					</button>
+				</div>
+			</section>
 		</div>
 	</header>
 
@@ -196,6 +211,10 @@ const elements = {
 	colorBlue: document.getElementById('color-blue') as HTMLButtonElement,
 	colorGreen: document.getElementById('color-green') as HTMLButtonElement,
 	colorYellow: document.getElementById('color-yellow') as HTMLButtonElement,
+	// Page management
+	btnAddPage: document.getElementById('btn-add-page') as HTMLButtonElement,
+	btnDeletePage: document.getElementById('btn-delete-page') as HTMLButtonElement,
+	btnRotatePage: document.getElementById('btn-rotate-page') as HTMLButtonElement,
 	// Inputs
 	inputPage: document.getElementById('input-page') as HTMLInputElement,
 	fileInput: document.getElementById('file-input') as HTMLInputElement,
@@ -313,6 +332,10 @@ function setControlsEnabled(enabled: boolean): void {
 	elements.btnZoomOut.disabled = !enabled
 	elements.btnFit.disabled = !enabled
 	elements.btnClear.disabled = !enabled
+	// Page management buttons
+	elements.btnAddPage.disabled = !enabled
+	elements.btnDeletePage.disabled = !enabled
+	elements.btnRotatePage.disabled = !enabled
 }
 
 function toggleMenu(): void {
@@ -583,6 +606,60 @@ elements.btnClear.addEventListener('click', () => {
 	if (drawingLayer && state.editor) {
 		drawingLayer.clearPage(state.editor.getCurrentPage())
 		showToast('🗑️ Page cleared')
+	}
+})
+
+// ============================================================================
+// Page Management
+// ============================================================================
+
+elements.btnAddPage.addEventListener('click', () => {
+	if (!state.editor) return
+	try {
+		const currentPage = state.editor.getCurrentPage()
+		const newPage = state.editor.addBlankPage(currentPage)
+		showToast(`📄 Added page ${newPage}`)
+		updatePageInfo()
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Unknown error'
+		showToast(`❌ ${message}`)
+	}
+})
+
+elements.btnDeletePage.addEventListener('click', () => {
+	if (!state.editor) return
+	const pageCount = state.editor.getPageCount()
+	if (pageCount <= 1) {
+		showToast('❌ Cannot delete the only page')
+		return
+	}
+	try {
+		const currentPage = state.editor.getCurrentPage()
+		state.editor.deletePage(currentPage)
+		showToast(`🗑️ Deleted page ${currentPage}`)
+		updatePageInfo()
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Unknown error'
+		showToast(`❌ ${message}`)
+	}
+})
+
+// Track current rotation for cycling
+let currentRotation: 0 | 90 | 180 | 270 = 0
+
+elements.btnRotatePage.addEventListener('click', () => {
+	if (!state.editor) return
+	try {
+		const currentPage = state.editor.getCurrentPage()
+		// Cycle through rotations: 0 -> 90 -> 180 -> 270 -> 0
+		const rotations: readonly (0 | 90 | 180 | 270)[] = [0, 90, 180, 270]
+		const currentIndex = rotations.indexOf(currentRotation)
+		currentRotation = rotations[(currentIndex + 1) % 4] ?? 0
+		state.editor.rotatePage(currentPage, currentRotation)
+		showToast(`🔄 Rotated to ${currentRotation}°`)
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Unknown error'
+		showToast(`❌ ${message}`)
 	}
 })
 

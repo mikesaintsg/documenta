@@ -205,6 +205,11 @@ export class PdfEditor implements EditorInterface {
 		this.#gestureRecognizer = new GestureRecognizer()
 		this.#gestureRecognizer.attach(this.#container)
 		this.#gestureUnsubscribe = this.#gestureRecognizer.onGesture(this.#handleGesture.bind(this))
+
+		// Enable mouse pan if initial mode is pan (for desktop support)
+		if (this.#mode === 'pan') {
+			this.#gestureRecognizer.setMousePanEnabled(true)
+		}
 	}
 
 	// =========================================================================
@@ -260,6 +265,10 @@ export class PdfEditor implements EditorInterface {
 
 		this.#mode = mode
 		this.#updateLayersForMode(mode)
+
+		// Enable mouse pan in pan mode for desktop support
+		this.#gestureRecognizer.setMousePanEnabled(mode === 'pan')
+
 		this.#notifyModeChange(mode)
 	}
 
@@ -503,19 +512,77 @@ export class PdfEditor implements EditorInterface {
 	// Page Management
 	// =========================================================================
 
-	addBlankPage(_afterPage?: number, _width?: number, _height?: number): number {
-		// TODO: Implement in Phase 6
-		throw new Error('Not implemented')
+	addBlankPage(afterPage?: number, width?: number, height?: number): number {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
+			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
+		}
+
+		// Call PdfDocument's addBlankPage implementation
+		const newPageNumber = doc.addBlankPage(afterPage, width, height)
+
+		// Mark as having unsaved changes
+		this.#hasUnsavedChanges = true
+
+		// Notify listeners about page count change
+		const pageCount = this.getPageCount()
+		for (const listener of this.#loadListeners) {
+			listener(this.getFileName() ?? 'document.pdf', pageCount)
+		}
+
+		// Navigate to the new page
+		this.goToPage(newPageNumber)
+
+		return newPageNumber
 	}
 
-	deletePage(_pageNumber: number): void {
-		// TODO: Implement in Phase 6
-		throw new Error('Not implemented')
+	deletePage(pageNumber: number): void {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
+			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
+		}
+
+		// Call PdfDocument's deletePage implementation
+		doc.deletePage(pageNumber)
+
+		// Mark as having unsaved changes
+		this.#hasUnsavedChanges = true
+
+		// Adjust current page if needed
+		const newPageCount = this.getPageCount()
+		if (this.#currentPage > newPageCount) {
+			this.#currentPage = newPageCount
+		} else if (this.#currentPage === pageNumber && this.#currentPage > 1) {
+			// Stay on same visual position, which is now the previous page number
+			this.#currentPage = Math.max(1, pageNumber - 1)
+		}
+
+		// Re-render and notify
+		this.renderPage(this.#currentPage)
+		this.#notifyPageChange(this.#currentPage)
+
+		// Notify listeners about page count change
+		for (const listener of this.#loadListeners) {
+			listener(this.getFileName() ?? 'document.pdf', newPageCount)
+		}
 	}
 
-	rotatePage(_pageNumber: number, _rotation: PageRotation): void {
-		// TODO: Implement in Phase 6
-		throw new Error('Not implemented')
+	rotatePage(pageNumber: number, rotation: PageRotation): void {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
+			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
+		}
+
+		// Call PdfDocument's rotatePage implementation
+		doc.rotatePage(pageNumber, rotation)
+
+		// Mark as having unsaved changes
+		this.#hasUnsavedChanges = true
+
+		// Re-render if current page was rotated
+		if (pageNumber === this.#currentPage) {
+			this.renderPage(this.#currentPage)
+		}
 	}
 
 	getPageRotation(pageNumber: number): PageRotation {
@@ -524,9 +591,30 @@ export class PdfEditor implements EditorInterface {
 		return doc.getPageRotation(pageNumber)
 	}
 
-	movePage(_fromPage: number, _toPage: number): void {
-		// TODO: Implement in Phase 6
-		throw new Error('Not implemented')
+	movePage(fromPage: number, toPage: number): void {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
+			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
+		}
+
+		// Call PdfDocument's movePage implementation
+		doc.movePage(fromPage, toPage)
+
+		// Mark as having unsaved changes
+		this.#hasUnsavedChanges = true
+
+		// Adjust current page based on the move
+		if (this.#currentPage === fromPage) {
+			this.#currentPage = toPage
+		} else if (fromPage < this.#currentPage && toPage >= this.#currentPage) {
+			this.#currentPage--
+		} else if (fromPage > this.#currentPage && toPage <= this.#currentPage) {
+			this.#currentPage++
+		}
+
+		// Re-render and notify
+		this.renderPage(this.#currentPage)
+		this.#notifyPageChange(this.#currentPage)
 	}
 
 	// =========================================================================
