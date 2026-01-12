@@ -396,12 +396,31 @@ export class PdfEditor implements EditorInterface {
 
 		const clampedPage = clampPageNumber(pageNumber, doc.getPageCount())
 
-		// Render all layers
+		// Render the canvas layer first (sets container dimensions)
 		this.#canvasLayer.render(clampedPage, this.#zoom)
-		this.#textLayer?.render(clampedPage, this.#zoom)
-		this.#drawingLayer?.render(clampedPage, this.#zoom)
-		this.#formLayer?.render(clampedPage, this.#zoom)
-		this.#annotationLayer?.render(clampedPage, this.#zoom)
+
+		// Get the rendered canvas dimensions and resize all other layers to match
+		const canvas = this.#canvasLayer.getCanvas()
+		const width = canvas.clientWidth
+		const height = canvas.clientHeight
+
+		// Resize and render all other layers
+		if (this.#textLayer) {
+			this.#textLayer.resize(width, height)
+			this.#textLayer.render(clampedPage, this.#zoom)
+		}
+		if (this.#drawingLayer) {
+			this.#drawingLayer.resize(width, height)
+			this.#drawingLayer.render(clampedPage, this.#zoom)
+		}
+		if (this.#formLayer) {
+			this.#formLayer.resize(width, height)
+			this.#formLayer.render(clampedPage, this.#zoom)
+		}
+		if (this.#annotationLayer) {
+			this.#annotationLayer.resize(width, height)
+			this.#annotationLayer.render(clampedPage, this.#zoom)
+		}
 	}
 
 	getPageDimensions(pageNumber: number): PageDimensions {
@@ -705,8 +724,8 @@ export class PdfEditor implements EditorInterface {
 
 	#handleResize(): void {
 		if (this.#document?.isLoaded() && this.#currentPage > 0) {
-			const { width, height } = this.#container.getBoundingClientRect()
-			this.#canvasLayer.resize(width, height)
+			// Re-render page (which will resize all layers)
+			this.renderPage(this.#currentPage)
 		}
 	}
 

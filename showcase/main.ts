@@ -407,6 +407,17 @@ function initializeEditor(): void {
 			elements.inputPage.max = String(pageCount)
 			setControlsEnabled(true)
 			updateSaveStatus()
+
+			// Subscribe to drawing layer events for undo/redo button updates
+			const drawingLayer = state.editor?.getDrawingLayer()
+			if (drawingLayer) {
+				drawingLayer.onStrokeComplete(() => {
+					updateUndoRedoButtons()
+				})
+				drawingLayer.onStrokeErase(() => {
+					updateUndoRedoButtons()
+				})
+			}
 		},
 		onPageChange: (pageNumber) => {
 			elements.inputPage.value = String(pageNumber)
@@ -417,6 +428,7 @@ function initializeEditor(): void {
 		},
 		onModeChange: (mode) => {
 			updateModeButtons(mode)
+			updateUndoRedoButtons()
 		},
 		onSave: (success) => {
 			if (success) {
