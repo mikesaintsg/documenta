@@ -710,6 +710,29 @@ elements.viewerContainer.addEventListener('touchend', () => {
 })
 
 // ============================================================================
+// Ctrl+Scroll Wheel Zoom (Desktop)
+// ============================================================================
+
+elements.viewerContainer.addEventListener('wheel', (e) => {
+	// Only zoom when Ctrl/Cmd is held
+	if (!e.ctrlKey && !e.metaKey) {
+		return // Allow normal scrolling
+	}
+
+	// Prevent browser zoom
+	e.preventDefault()
+
+	if (!state.editor) return
+
+	// Determine zoom direction: deltaY > 0 means scroll down (zoom out)
+	if (e.deltaY < 0) {
+		state.editor.zoomIn()
+	} else if (e.deltaY > 0) {
+		state.editor.zoomOut()
+	}
+}, { passive: false })
+
+// ============================================================================
 // Initialize
 // ============================================================================
 

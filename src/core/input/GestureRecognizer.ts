@@ -103,6 +103,9 @@ export class GestureRecognizer implements GestureRecognizerInterface {
 	}
 
 	#handlePointerDown(e: PointerEvent): void {
+		// Only handle touch events - let mouse events pass through for native scrolling
+		if (e.pointerType === 'mouse') return
+
 		// Track pointer
 		const data: PointerData = {
 			id: e.pointerId,
@@ -133,6 +136,9 @@ export class GestureRecognizer implements GestureRecognizerInterface {
 	}
 
 	#handlePointerMove(e: PointerEvent): void {
+		// Only handle touch events - let mouse events pass through
+		if (e.pointerType === 'mouse') return
+
 		const data = this.#pointers.get(e.pointerId)
 		if (!data) return
 
@@ -172,6 +178,9 @@ export class GestureRecognizer implements GestureRecognizerInterface {
 	}
 
 	#handlePointerUp(e: PointerEvent): void {
+		// Only handle touch events - let mouse events pass through
+		if (e.pointerType === 'mouse') return
+
 		const data = this.#pointers.get(e.pointerId)
 		if (!data) return
 
@@ -265,6 +274,9 @@ export class GestureRecognizer implements GestureRecognizerInterface {
 	}
 
 	#handlePointerCancel(e: PointerEvent): void {
+		// Only handle touch events - let mouse events pass through
+		if (e.pointerType === 'mouse') return
+
 		this.#pointers.delete(e.pointerId)
 		this.#cancelLongPress()
 

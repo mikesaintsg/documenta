@@ -18,7 +18,7 @@ function createPointerEvent(
 		clientX: options.clientX ?? 0,
 		clientY: options.clientY ?? 0,
 		isPrimary: options.isPrimary ?? true,
-		pointerType: options.pointerType ?? 'mouse',
+		pointerType: options.pointerType ?? 'touch', // Use touch by default (mouse events are passed through)
 		buttons: options.buttons ?? 0,
 		bubbles: true,
 		cancelable: true,
