@@ -24,12 +24,14 @@ export class CanvasLayer implements CanvasLayerInterface {
 
 	#canvas: HTMLCanvasElement
 	#ctx: CanvasRenderingContext2D
+	#container: HTMLElement
 	#document: PdfDocumentInterface | undefined
 	#active = false
 	#currentPage = 0
 	#currentScale = 1
 
 	constructor(container: HTMLElement) {
+		this.#container = container
 		this.#canvas = document.createElement('canvas')
 		this.#canvas.className = CSS_CLASSES.CANVAS_LAYER
 		this.#canvas.style.position = 'absolute'
@@ -101,6 +103,10 @@ export class CanvasLayer implements CanvasLayerInterface {
 
 		// Configure canvas for high DPI
 		configureCanvasForHighDpi(this.#canvas, effectiveWidth, effectiveHeight)
+
+		// Update container dimensions to match canvas
+		this.#container.style.width = `${effectiveWidth}px`
+		this.#container.style.height = `${effectiveHeight}px`
 
 		// Clear canvas
 		this.#ctx.clearRect(0, 0, effectiveWidth, effectiveHeight)
