@@ -719,6 +719,9 @@ elements.viewerContainer.addEventListener('wheel', (e) => {
 		return // Allow normal scrolling
 	}
 
+	// Ignore if no vertical scroll delta
+	if (e.deltaY === 0) return
+
 	// Prevent browser zoom
 	e.preventDefault()
 
@@ -727,7 +730,7 @@ elements.viewerContainer.addEventListener('wheel', (e) => {
 	// Determine zoom direction: deltaY > 0 means scroll down (zoom out)
 	if (e.deltaY < 0) {
 		state.editor.zoomIn()
-	} else if (e.deltaY > 0) {
+	} else {
 		state.editor.zoomOut()
 	}
 }, { passive: false })
