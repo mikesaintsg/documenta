@@ -50,6 +50,8 @@ import { DrawingLayer } from './drawing/DrawingLayer.js'
 import { TextLayer } from './text/TextLayer.js'
 import { FormLayer } from './form/FormLayer.js'
 import { AnnotationLayer } from './annotation/AnnotationLayer.js'
+import { GestureRecognizer } from './input/GestureRecognizer.js'
+import type { GestureEvent, Unsubscribe as GestureUnsubscribe } from '../types.js'
 
 // Dynamic import for PdfDocument to avoid WASM loading at import time
 let PdfDocumentClass: (new () => PdfDocumentInterface) | undefined
@@ -94,6 +96,15 @@ export class PdfEditor implements EditorInterface {
 	#drawingLayer: DrawingLayer | undefined
 	#formLayer: FormLayer | undefined
 	#annotationLayer: AnnotationLayer | undefined
+	#gestureRecognizer: GestureRecognizer
+	#gestureUnsubscribe: GestureUnsubscribe | undefined
+
+	// Pan/pinch gesture state
+	#isPanActive = false
+	#panStartScrollLeft = 0
+	#panStartScrollTop = 0
+	#isPinchActive = false
+	#pinchStartZoom = 1
 
 	// Layer enable flags
 	#enableTextLayer: boolean
@@ -189,6 +200,11 @@ export class PdfEditor implements EditorInterface {
 			this.#debouncedResize()
 		})
 		this.#resizeObserver.observe(this.#container)
+
+		// Set up gesture recognition for pan mode
+		this.#gestureRecognizer = new GestureRecognizer()
+		this.#gestureRecognizer.attach(this.#container)
+		this.#gestureUnsubscribe = this.#gestureRecognizer.onGesture(this.#handleGesture.bind(this))
 	}
 
 	// =========================================================================
@@ -694,12 +710,107 @@ export class PdfEditor implements EditorInterface {
 		}
 	}
 
+	#handleGesture(event: GestureEvent): void {
+		// Only handle gestures in pan mode
+		if (this.#mode !== 'pan') return
+		if (!this.#document?.isLoaded()) return
+
+		switch (event.type) {
+			case 'pan':
+				this.#handlePanGesture(event)
+				break
+			case 'twofingerpan':
+				this.#handleTwoFingerPan(event)
+				break
+			case 'pinch':
+				this.#handlePinchGesture(event)
+				break
+			case 'doubletap':
+				this.#handleDoubleTap(event)
+				break
+			case 'tap':
+				// Single tap - no action in pan mode
+				break
+			case 'longpress':
+				// Long press - could be used for context menu in future
+				break
+		}
+	}
+
+	#handlePanGesture(event: GestureEvent): void {
+		// Pan (scroll) the viewer container
+		const parent = this.#container.parentElement
+		if (!parent) return
+
+		if (!event.isFinal && event.deltaX !== undefined && event.deltaY !== undefined) {
+			// Start of pan - store initial scroll position
+			if (!this.#isPanActive) {
+				this.#isPanActive = true
+				this.#panStartScrollLeft = parent.scrollLeft
+				this.#panStartScrollTop = parent.scrollTop
+			}
+
+			// Apply delta to scroll position
+			parent.scrollLeft = this.#panStartScrollLeft - event.deltaX
+			parent.scrollTop = this.#panStartScrollTop - event.deltaY
+		}
+
+		if (event.isFinal) {
+			// Reset pan state
+			this.#isPanActive = false
+			this.#panStartScrollLeft = 0
+			this.#panStartScrollTop = 0
+		}
+	}
+
+	#handleTwoFingerPan(event: GestureEvent): void {
+		// Two-finger pan works same as single-finger pan
+		this.#handlePanGesture(event)
+	}
+
+	#handlePinchGesture(event: GestureEvent): void {
+		if (event.scale === undefined) return
+
+		if (!event.isFinal) {
+			// Start of pinch - store initial zoom
+			if (!this.#isPinchActive) {
+				this.#isPinchActive = true
+				this.#pinchStartZoom = this.#zoom
+			}
+
+			// Apply scale to zoom
+			const newZoom = clampZoom(this.#pinchStartZoom * event.scale, MIN_ZOOM, MAX_ZOOM)
+			if (newZoom !== this.#zoom) {
+				this.#zoom = newZoom
+				this.renderPage(this.#currentPage)
+				this.#notifyZoomChange(newZoom)
+			}
+		}
+
+		if (event.isFinal) {
+			// Reset pinch state
+			this.#isPinchActive = false
+			this.#pinchStartZoom = this.#zoom
+		}
+	}
+
+	#handleDoubleTap(_event: GestureEvent): void {
+		// Double-tap to toggle between 100% and fit-to-width
+		if (this.#zoom === DEFAULT_ZOOM) {
+			this.fitToWidth()
+		} else {
+			this.resetZoom()
+		}
+	}
+
 	// =========================================================================
 	// Lifecycle
 	// =========================================================================
 
 	destroy(): void {
 		this.#resizeObserver.disconnect()
+		this.#gestureUnsubscribe?.()
+		this.#gestureRecognizer.destroy()
 
 		// Destroy all layers
 		this.#canvasLayer.destroy()
