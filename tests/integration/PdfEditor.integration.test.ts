@@ -2,26 +2,29 @@
  * PdfEditor Integration Tests
  *
  * Tests end-to-end workflows simulating real user scenarios.
+ * Uses real mupdf library - no mocks.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { PdfEditor } from '~/src/core/PdfEditor.js'
-import { createMockElement, createMockFile, createMockPdfBuffer, createMockPdfDocument } from '../setup.js'
-import type { EditorMode, PdfDocumentInterface } from '~/src/types.js'
+import { createTestElement, createInvalidFile, loadPdfFixture, PDF_FIXTURES } from '../setup.js'
+import type { EditorMode } from '~/src/types.js'
 
 describe('PdfEditor Integration', () => {
 	let container: HTMLElement
 	let editor: PdfEditor
-	let mockDocument: PdfDocumentInterface
+	let simplePdfBuffer: ArrayBuffer
 
-	beforeEach(() => {
-		container = createMockElement()
+	beforeEach(async () => {
+		container = createTestElement()
 		container.style.width = '800px'
 		container.style.height = '600px'
 		document.body.appendChild(container)
 
-		mockDocument = createMockPdfDocument()
-		editor = new PdfEditor({ container, document: mockDocument })
+		// Load fixture once for the test suite
+		simplePdfBuffer = await loadPdfFixture(PDF_FIXTURES.simple)
+
+		editor = new PdfEditor({ container })
 	})
 
 	afterEach(() => {
@@ -37,9 +40,8 @@ describe('PdfEditor Integration', () => {
 			expect(editor.getMode()).toBe('pan')
 		})
 
-		it('should load document and update state', async() => {
-			const buffer = createMockPdfBuffer()
-			await editor.loadFromBuffer(buffer, 'test.pdf')
+		it('should load document and update state', async () => {
+			await editor.loadFromBuffer(simplePdfBuffer, 'test.pdf')
 
 			expect(editor.isLoaded()).toBe(true)
 			expect(editor.getCurrentPage()).toBe(1)
@@ -47,7 +49,7 @@ describe('PdfEditor Integration', () => {
 			expect(editor.getFileName()).toBe('test.pdf')
 		})
 
-		it('should emit load event with correct data', async() => {
+		it('should emit load event with correct data', async () => {
 			let loadedFileName = ''
 			let loadedPageCount = 0
 
@@ -56,16 +58,14 @@ describe('PdfEditor Integration', () => {
 				loadedPageCount = pageCount
 			})
 
-			const buffer = createMockPdfBuffer()
-			await editor.loadFromBuffer(buffer, 'report.pdf')
+			await editor.loadFromBuffer(simplePdfBuffer, 'report.pdf')
 
 			expect(loadedFileName).toBe('report.pdf')
 			expect(loadedPageCount).toBeGreaterThan(0)
 		})
 
-		it('should clean up on destroy', async() => {
-			const buffer = createMockPdfBuffer()
-			await editor.loadFromBuffer(buffer, 'test.pdf')
+		it('should clean up on destroy', async () => {
+			await editor.loadFromBuffer(simplePdfBuffer, 'test.pdf')
 
 			editor.destroy()
 
@@ -74,9 +74,10 @@ describe('PdfEditor Integration', () => {
 	})
 
 	describe('Navigation Workflow', () => {
-		beforeEach(async() => {
-			const buffer = createMockPdfBuffer()
-			await editor.loadFromBuffer(buffer, 'test.pdf')
+		beforeEach(async () => {
+			// Use multi-page fixture for navigation tests
+			const multiPageBuffer = await loadPdfFixture(PDF_FIXTURES.multiPage)
+			await editor.loadFromBuffer(multiPageBuffer, 'test.pdf')
 		})
 
 		it('should navigate through pages sequentially', () => {
@@ -116,9 +117,8 @@ describe('PdfEditor Integration', () => {
 	})
 
 	describe('Zoom Workflow', () => {
-		beforeEach(async() => {
-			const buffer = createMockPdfBuffer()
-			await editor.loadFromBuffer(buffer, 'test.pdf')
+		beforeEach(async () => {
+			await editor.loadFromBuffer(simplePdfBuffer, 'test.pdf')
 		})
 
 		it('should zoom in and out', () => {
@@ -191,9 +191,8 @@ describe('PdfEditor Integration', () => {
 	})
 
 	describe('State Snapshot', () => {
-		it('should return complete state snapshot', async() => {
-			const buffer = createMockPdfBuffer()
-			await editor.loadFromBuffer(buffer, 'document.pdf')
+		it('should return complete state snapshot', async () => {
+			await editor.loadFromBuffer(simplePdfBuffer, 'document.pdf')
 			editor.setMode('draw')
 			editor.setZoom(1.5)
 
@@ -247,13 +246,13 @@ describe('PdfEditor Integration', () => {
 	})
 
 	describe('Error Handling', () => {
-		it('should emit error for invalid PDF file', async() => {
+		it('should emit error for invalid PDF file', async () => {
 			let errorReceived: Error | null = null
 			editor.onError((error) => {
 				errorReceived = error
 			})
 
-			const invalidFile = createMockFile('invalid.txt', 'not a pdf', 'text/plain')
+			const invalidFile = createInvalidFile('invalid.txt', 'not a pdf', 'text/plain')
 
 			try {
 				await editor.load(invalidFile)
@@ -264,7 +263,7 @@ describe('PdfEditor Integration', () => {
 			expect(errorReceived).not.toBeNull()
 		})
 
-		it('should throw when saving without document', async() => {
+		it('should throw when saving without document', async () => {
 			await expect(editor.save()).rejects.toThrow()
 		})
 
@@ -274,9 +273,9 @@ describe('PdfEditor Integration', () => {
 	})
 
 	describe('Options Callbacks', () => {
-		it('should call option callbacks on events', async() => {
+		it('should call option callbacks on events', async () => {
 			container.remove()
-			container = createMockElement()
+			container = createTestElement()
 			container.style.width = '800px'
 			container.style.height = '600px'
 			document.body.appendChild(container)
@@ -290,15 +289,13 @@ describe('PdfEditor Integration', () => {
 
 			const editorWithCallbacks = new PdfEditor({
 				container,
-				document: createMockPdfDocument(),
 				onLoad: () => { callbacks.loadCalled = true },
 				onPageChange: () => { callbacks.pageChangeCalled = true },
 				onZoomChange: () => { callbacks.zoomChangeCalled = true },
 				onModeChange: () => { callbacks.modeChangeCalled = true },
 			})
 
-			const buffer = createMockPdfBuffer()
-			await editorWithCallbacks.loadFromBuffer(buffer, 'test.pdf')
+			await editorWithCallbacks.loadFromBuffer(simplePdfBuffer, 'test.pdf')
 
 			expect(callbacks.loadCalled).toBe(true)
 			expect(callbacks.pageChangeCalled).toBe(true)

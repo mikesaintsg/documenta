@@ -22,6 +22,7 @@ export default defineConfig({
 		target: 'esnext',
 	},
 	optimizeDeps: {
+		exclude: ['mupdf'],
 		esbuildOptions: {
 			target: 'esnext',
 		},

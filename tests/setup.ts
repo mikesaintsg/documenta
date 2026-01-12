@@ -1,18 +1,32 @@
 /**
  * Test utilities and setup for Documenta
  * @module tests/setup
+ *
+ * Uses real mupdf library - no mocks. Tests run in Playwright browser environment.
  */
 
-import type { PdfDocumentInterface, PdfPageInterface, TextBlock, PageRotation, PageDimensions } from '~/src/types.js'
+import { PdfDocument } from '~/src/core/document/PdfDocument.js'
+import type { PdfDocumentInterface } from '~/src/types.js'
 
 /**
- * Create a mock HTML element for testing
+ * Paths to PDF fixture files (relative to project root for fetch)
+ */
+export const PDF_FIXTURES = {
+	simple: '/tests/fixtures/simple.pdf',
+	multiPage: '/tests/fixtures/multi-page.pdf',
+	searchable: '/tests/fixtures/searchable.pdf',
+	blank: '/tests/fixtures/blank.pdf',
+	form: '/tests/fixtures/form.pdf',
+} as const
+
+/**
+ * Create a test HTML element
  *
  * @param tag - Element tag name (default: 'div')
  * @param id - Optional element ID
  * @returns Created element
  */
-export function createMockElement(tag = 'div', id?: string): HTMLElement {
+export function createTestElement(tag = 'div', id?: string): HTMLElement {
 	const el = document.createElement(tag)
 	if (id) {
 		el.id = id
@@ -21,14 +35,30 @@ export function createMockElement(tag = 'div', id?: string): HTMLElement {
 }
 
 /**
- * Create a mock File for testing
+ * Create a test File object from an ArrayBuffer
+ *
+ * @param buffer - The PDF data
+ * @param name - File name
+ * @param type - MIME type (default: application/pdf)
+ * @returns Created File object
+ */
+export function createTestFile(
+	buffer: ArrayBuffer,
+	name: string,
+	type = 'application/pdf',
+): File {
+	return new File([buffer], name, { type })
+}
+
+/**
+ * Create a File with string content for testing file operations
  *
  * @param name - File name
- * @param content - File content
+ * @param content - String content for the file
  * @param type - MIME type
  * @returns Created File object
  */
-export function createMockFile(
+export function createFileWithContent(
 	name: string,
 	content = '',
 	type = 'application/pdf',
@@ -37,12 +67,28 @@ export function createMockFile(
 }
 
 /**
- * Create a mock ArrayBuffer with content
+ * Create an invalid (non-PDF) file for testing error handling
+ *
+ * @param name - File name
+ * @param content - File content
+ * @param type - MIME type
+ * @returns Created File object
+ */
+export function createInvalidFile(
+	name: string,
+	content = 'not a pdf',
+	type = 'text/plain',
+): File {
+	return new File([content], name, { type })
+}
+
+/**
+ * Create an ArrayBuffer with sequential byte content for testing
  *
  * @param size - Buffer size in bytes
  * @returns Created ArrayBuffer
  */
-export function createMockArrayBuffer(size: number): ArrayBuffer {
+export function createTestArrayBuffer(size: number): ArrayBuffer {
 	const buffer = new ArrayBuffer(size)
 	const view = new Uint8Array(buffer)
 	for (let i = 0; i < size; i++) {
@@ -62,13 +108,13 @@ export function delay(ms: number): Promise<void> {
 }
 
 /**
- * Create a mock canvas element with 2D context
+ * Create a test canvas element with 2D context
  *
  * @param width - Canvas width
  * @param height - Canvas height
  * @returns Created canvas element
  */
-export function createMockCanvas(width = 100, height = 100): HTMLCanvasElement {
+export function createTestCanvas(width = 100, height = 100): HTMLCanvasElement {
 	const canvas = document.createElement('canvas')
 	canvas.width = width
 	canvas.height = height
@@ -76,139 +122,41 @@ export function createMockCanvas(width = 100, height = 100): HTMLCanvasElement {
 }
 
 /**
- * Create a mock PDF buffer that simulates a valid PDF structure
+ * Load a PDF fixture file and return its ArrayBuffer
  *
- * @returns ArrayBuffer with mock PDF data
+ * @param fixturePath - Path to the fixture (use PDF_FIXTURES constants)
+ * @returns ArrayBuffer containing PDF data
  */
-export function createMockPdfBuffer(): ArrayBuffer {
-	// Create a minimal PDF-like structure
-	const pdfHeader = '%PDF-1.4\n'
-	const encoder = new TextEncoder()
-	const data = encoder.encode(pdfHeader + '\n%%EOF')
-	return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+export async function loadPdfFixture(fixturePath: string): Promise<ArrayBuffer> {
+	const response = await fetch(fixturePath)
+	if (!response.ok) {
+		throw new Error(`Failed to load fixture: ${fixturePath} (${response.status})`)
+	}
+	return response.arrayBuffer()
 }
 
 /**
- * Create a mock PDF page for testing
+ * Create a real PdfDocument instance and load it with fixture data
  *
- * @param pageNumber - Page number
- * @param width - Page width
- * @param height - Page height
- * @returns Mock PdfPageInterface
+ * @param fixturePath - Path to the fixture (use PDF_FIXTURES constants)
+ * @param fileName - Optional file name to associate with the document
+ * @returns Loaded PdfDocument instance
  */
-export function createMockPdfPage(pageNumber = 1, width = 612, height = 792): PdfPageInterface {
-	return {
-		pageNumber,
-		width,
-		height,
-		rotation: 0 as PageRotation,
-		render(_ctx: CanvasRenderingContext2D, _scale: number): void {
-			// No-op for testing
-		},
-		getText(): string {
-			return `Sample text for page ${pageNumber}`
-		},
-		getTextBlocks(): readonly TextBlock[] {
-			return [{
-				id: `block-${pageNumber}-1`,
-				bounds: { x: 50, y: 50, width: 200, height: 20 },
-				lines: [{
-					id: `line-${pageNumber}-1`,
-					bounds: { x: 50, y: 50, width: 200, height: 20 },
-					characters: [
-						{
-							char: 'T',
-							bounds: { x: 50, y: 50, width: 10, height: 20 },
-							fontSize: 12,
-							fontName: 'Helvetica',
-							color: { r: 0, g: 0, b: 0 },
-						},
-						{
-							char: 'e',
-							bounds: { x: 60, y: 50, width: 10, height: 20 },
-							fontSize: 12,
-							fontName: 'Helvetica',
-							color: { r: 0, g: 0, b: 0 },
-						},
-						{
-							char: 's',
-							bounds: { x: 70, y: 50, width: 10, height: 20 },
-							fontSize: 12,
-							fontName: 'Helvetica',
-							color: { r: 0, g: 0, b: 0 },
-						},
-						{
-							char: 't',
-							bounds: { x: 80, y: 50, width: 10, height: 20 },
-							fontSize: 12,
-							fontName: 'Helvetica',
-							color: { r: 0, g: 0, b: 0 },
-						},
-					],
-				}],
-			}]
-		},
-		destroy(): void {
-			// No-op for testing
-		},
-	}
+export async function createLoadedPdfDocument(
+	fixturePath: string = PDF_FIXTURES.simple,
+	fileName?: string,
+): Promise<PdfDocumentInterface> {
+	const buffer = await loadPdfFixture(fixturePath)
+	const doc = new PdfDocument()
+	await doc.loadFromBuffer(buffer, fileName ?? fixturePath.split('/').pop())
+	return doc
 }
 
 /**
- * Create a mock PDF document for testing
+ * Create a real PdfDocument instance (not loaded)
  *
- * @param options - Configuration options
- * @returns Mock PdfDocumentInterface
+ * @returns Empty PdfDocument instance ready for loading
  */
-export function createMockPdfDocument(options: { pageCount?: number; fileName?: string; initiallyLoaded?: boolean } = {}): PdfDocumentInterface {
-	const { pageCount: defaultPageCount = 3, initiallyLoaded = false } = options
-	let loaded = initiallyLoaded
-	let currentFileName: string | undefined = initiallyLoaded ? (options.fileName ?? 'test.pdf') : undefined
-	let currentPageCount = initiallyLoaded ? defaultPageCount : 0
-	const pages = new Map<number, PdfPageInterface>()
-
-	return {
-		isLoaded(): boolean {
-			return loaded
-		},
-		getPageCount(): number {
-			return currentPageCount
-		},
-		getFileName(): string | undefined {
-			return currentFileName
-		},
-		async loadFromBuffer(_buffer: ArrayBuffer, fileName?: string): Promise<void> {
-			loaded = true
-			currentFileName = fileName
-			currentPageCount = defaultPageCount
-		},
-		getPage(pageNumber: number): PdfPageInterface {
-			if (!loaded) {
-				throw new Error('No document loaded')
-			}
-			if (!pages.has(pageNumber)) {
-				pages.set(pageNumber, createMockPdfPage(pageNumber))
-			}
-			return pages.get(pageNumber)!
-		},
-		getPageDimensions(pageNumber: number): PageDimensions {
-			const page = this.getPage(pageNumber)
-			return { width: page.width, height: page.height }
-		},
-		getPageRotation(_pageNumber: number): PageRotation {
-			return 0
-		},
-		toArrayBuffer(): ArrayBuffer {
-			if (!loaded) {
-				throw new Error('No document loaded')
-			}
-			return createMockPdfBuffer()
-		},
-		destroy(): void {
-			loaded = false
-			currentFileName = undefined
-			currentPageCount = 0
-			pages.clear()
-		},
-	}
+export function createPdfDocument(): PdfDocumentInterface {
+	return new PdfDocument()
 }

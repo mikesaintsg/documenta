@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { FileManager } from '~/src/core/file/FileManager.js'
-import { createMockFile, createMockArrayBuffer } from '../../setup.js'
+import { createFileWithContent, createTestArrayBuffer } from '../../setup.js'
 
 describe('FileManager', () => {
 	let fileManager: FileManager
@@ -23,7 +23,7 @@ describe('FileManager', () => {
 	describe('loadFile', () => {
 		it('loads file and returns ArrayBuffer', async() => {
 			const content = 'test content'
-			const file = createMockFile('test.pdf', content)
+			const file = createFileWithContent('test.pdf', content)
 
 			const buffer = await fileManager.loadFile(file)
 
@@ -32,7 +32,7 @@ describe('FileManager', () => {
 		})
 
 		it('handles empty file', async() => {
-			const file = createMockFile('empty.pdf', '')
+			const file = createFileWithContent('empty.pdf', '')
 
 			const buffer = await fileManager.loadFile(file)
 
@@ -41,7 +41,7 @@ describe('FileManager', () => {
 
 		it('handles large file content', async() => {
 			const content = 'x'.repeat(1000000)
-			const file = createMockFile('large.pdf', content)
+			const file = createFileWithContent('large.pdf', content)
 
 			const buffer = await fileManager.loadFile(file)
 
@@ -50,7 +50,7 @@ describe('FileManager', () => {
 
 		it('preserves file content correctly', async() => {
 			const content = 'Hello, PDF!'
-			const file = createMockFile('test.pdf', content)
+			const file = createFileWithContent('test.pdf', content)
 
 			const buffer = await fileManager.loadFile(file)
 			const decoder = new TextDecoder()
@@ -72,7 +72,7 @@ describe('FileManager', () => {
 		})
 
 		it('fetches and returns ArrayBuffer', async() => {
-			const mockBuffer = createMockArrayBuffer(100)
+			const mockBuffer = createTestArrayBuffer(100)
 			globalThis.fetch = vi.fn().mockResolvedValue({
 				ok: true,
 				arrayBuffer: () => Promise.resolve(mockBuffer),
@@ -116,7 +116,7 @@ describe('FileManager', () => {
 
 	describe('save', () => {
 		it('returns undefined when no handle provided', async() => {
-			const data = createMockArrayBuffer(100)
+			const data = createTestArrayBuffer(100)
 
 			const result = await fileManager.save(data)
 
@@ -124,7 +124,7 @@ describe('FileManager', () => {
 		})
 
 		it('saves to handle when File System Access available', async() => {
-			const data = createMockArrayBuffer(100)
+			const data = createTestArrayBuffer(100)
 			const mockWritable = {
 				write: vi.fn(),
 				close: vi.fn(),
@@ -161,7 +161,7 @@ describe('FileManager', () => {
 			delete (window as { showSaveFilePicker?: typeof window.showSaveFilePicker }).showSaveFilePicker
 
 			const downloadSpy = vi.spyOn(fileManager, 'download').mockImplementation(() => {})
-			const data = createMockArrayBuffer(100)
+			const data = createTestArrayBuffer(100)
 
 			const result = await fileManager.saveAs(data, 'test.pdf')
 
@@ -201,7 +201,7 @@ describe('FileManager', () => {
 		})
 
 		it('creates and clicks download link', () => {
-			const data = createMockArrayBuffer(100)
+			const data = createTestArrayBuffer(100)
 
 			fileManager.download(data, 'test.pdf')
 
@@ -209,7 +209,7 @@ describe('FileManager', () => {
 		})
 
 		it('sets correct filename', () => {
-			const data = createMockArrayBuffer(100)
+			const data = createTestArrayBuffer(100)
 
 			fileManager.download(data, 'my-document.pdf')
 
@@ -217,7 +217,7 @@ describe('FileManager', () => {
 		})
 
 		it('sets correct href', () => {
-			const data = createMockArrayBuffer(100)
+			const data = createTestArrayBuffer(100)
 
 			fileManager.download(data, 'test.pdf')
 
@@ -225,7 +225,7 @@ describe('FileManager', () => {
 		})
 
 		it('creates blob with correct MIME type', () => {
-			const data = createMockArrayBuffer(100)
+			const data = createTestArrayBuffer(100)
 
 			fileManager.download(data, 'test.pdf')
 
@@ -235,7 +235,7 @@ describe('FileManager', () => {
 
 	describe('edge cases', () => {
 		it('handles unicode filenames', async() => {
-			const file = createMockFile('日本語.pdf', 'content')
+			const file = createFileWithContent('日本語.pdf', 'content')
 
 			const buffer = await fileManager.loadFile(file)
 
@@ -243,7 +243,7 @@ describe('FileManager', () => {
 		})
 
 		it('handles filenames with special characters', async() => {
-			const file = createMockFile('test file (1).pdf', 'content')
+			const file = createFileWithContent('test file (1).pdf', 'content')
 
 			const buffer = await fileManager.loadFile(file)
 

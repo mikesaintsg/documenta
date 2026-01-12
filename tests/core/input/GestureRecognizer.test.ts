@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { GestureRecognizer } from '~/src/core/input/GestureRecognizer.js'
-import { createMockElement } from '../../setup.js'
+import { createTestElement } from '../../setup.js'
 import type { GestureEvent, GestureCallback } from '~/src/types.js'
 
 // Helper to create pointer events
@@ -33,7 +33,7 @@ describe('GestureRecognizer', () => {
 	let gestureCallback: GestureCallback
 
 	beforeEach(() => {
-		element = createMockElement()
+		element = createTestElement()
 		element.style.width = '800px'
 		element.style.height = '600px'
 		document.body.appendChild(element)
@@ -67,7 +67,7 @@ describe('GestureRecognizer', () => {
 		})
 
 		it('detaches previous element when attaching to new one', () => {
-			const element2 = createMockElement()
+			const element2 = createTestElement()
 			element2.setPointerCapture = vi.fn()
 			element2.releasePointerCapture = vi.fn()
 			document.body.appendChild(element2)

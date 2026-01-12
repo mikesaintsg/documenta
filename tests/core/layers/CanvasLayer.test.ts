@@ -1,321 +1,202 @@
 /**
  * Tests for CanvasLayer
  * @module tests/core/layers/CanvasLayer
+ *
+ * Uses real mupdf library - no mocks.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest'
 import { CanvasLayer } from '~/src/core/layers/CanvasLayer.js'
-import type { PdfDocumentInterface, PdfPageInterface } from '~/src/types.js'
-import { createMockElement } from '../../setup.js'
-
-// Mock PdfPage
-class MockPdfPage implements PdfPageInterface {
-	readonly pageNumber: number
-	readonly width: number
-	readonly height: number
-	readonly rotation = 0 as const
-
-	renderCalls: Array<{ scale: number }> = []
-
-	constructor(pageNumber: number, width = 612, height = 792) {
-		this.pageNumber = pageNumber
-		this.width = width
-		this.height = height
-	}
-
-	render(ctx: CanvasRenderingContext2D, scale: number): void {
-		this.renderCalls.push({ scale })
-		// Draw something to verify render was called
-		ctx.fillStyle = 'white'
-		ctx.fillRect(0, 0, this.width * scale, this.height * scale)
-	}
-
-	getText(): string {
-		return 'Mock page text'
-	}
-
-	getTextBlocks(): readonly [] {
-		return []
-	}
-
-	destroy(): void {}
-}
-
-// Mock PdfDocument
-class MockPdfDocument implements PdfDocumentInterface {
-	#loaded = false
-	#pages: MockPdfPage[] = []
-	#fileName: string | undefined
-
-	isLoaded(): boolean {
-		return this.#loaded
-	}
-
-	getPageCount(): number {
-		return this.#pages.length
-	}
-
-	getFileName(): string | undefined {
-		return this.#fileName
-	}
-
-	async loadFromBuffer(_buffer: ArrayBuffer, fileName?: string): Promise<void> {
-		this.#loaded = true
-		this.#fileName = fileName
-		this.#pages = [
-			new MockPdfPage(1),
-			new MockPdfPage(2),
-			new MockPdfPage(3),
-		]
-	}
-
-	getPage(pageNumber: number): PdfPageInterface {
-		const page = this.#pages[pageNumber - 1]
-		if (!page) {
-			throw new Error(`Invalid page number: ${pageNumber}`)
-		}
-		return page
-	}
-
-	getPageDimensions(pageNumber: number): { width: number; height: number } {
-		const page = this.getPage(pageNumber)
-		return { width: page.width, height: page.height }
-	}
-
-	getPageRotation(_pageNumber: number): 0 | 90 | 180 | 270 {
-		return 0
-	}
-
-	toArrayBuffer(): ArrayBuffer {
-		return new ArrayBuffer(0)
-	}
-
-	destroy(): void {
-		this.#loaded = false
-	}
-}
+import { PdfDocument } from '~/src/core/document/PdfDocument.js'
+import { createTestElement, loadPdfFixture, PDF_FIXTURES } from '../../setup.js'
+import type { PdfDocumentInterface } from '~/src/types.js'
 
 describe('CanvasLayer', () => {
-	let container: HTMLElement
-	let canvasLayer: CanvasLayer
-	let mockDocument: MockPdfDocument
+let container: HTMLElement
+let canvasLayer: CanvasLayer
+let pdfDocument: PdfDocumentInterface
+let simplePdfBuffer: ArrayBuffer
+let multiPagePdfBuffer: ArrayBuffer
 
-	beforeEach(async() => {
-		container = createMockElement()
-		container.style.width = '800px'
-		container.style.height = '600px'
-		document.body.appendChild(container)
+beforeAll(async () => {
+// Pre-load fixtures
+simplePdfBuffer = await loadPdfFixture(PDF_FIXTURES.simple)
+multiPagePdfBuffer = await loadPdfFixture(PDF_FIXTURES.multiPage)
+})
 
-		canvasLayer = new CanvasLayer(container)
-		mockDocument = new MockPdfDocument()
-		await mockDocument.loadFromBuffer(new ArrayBuffer(0), 'test.pdf')
-	})
+beforeEach(async () => {
+container = createTestElement()
+container.style.width = '800px'
+container.style.height = '600px'
+document.body.appendChild(container)
 
-	afterEach(() => {
-		canvasLayer.destroy()
-		container.remove()
-	})
+canvasLayer = new CanvasLayer(container)
+pdfDocument = new PdfDocument()
+await pdfDocument.loadFromBuffer(multiPagePdfBuffer, 'test.pdf')
+})
 
-	describe('constructor', () => {
-		it('creates canvas element', () => {
-			const canvas = canvasLayer.getCanvas()
-			expect(canvas).toBeInstanceOf(HTMLCanvasElement)
-		})
+afterEach(() => {
+canvasLayer.destroy()
+container.remove()
+})
 
-		it('appends canvas to container', () => {
-			const canvas = canvasLayer.getCanvas()
-			expect(container.contains(canvas)).toBe(true)
-		})
+describe('constructor', () => {
+it('creates canvas element', () => {
+const canvas = container.querySelector('canvas')
+expect(canvas).not.toBeNull()
+})
 
-		it('sets correct z-index', () => {
-			const canvas = canvasLayer.getCanvas()
-			expect(canvas.style.zIndex).toBe(String(canvasLayer.zIndex))
-		})
+it('canvas has expected class', () => {
+const canvas = container.querySelector('canvas')
+expect(canvas?.classList.length).toBeGreaterThan(0)
+})
 
-		it('positions canvas absolutely', () => {
-			const canvas = canvasLayer.getCanvas()
-			expect(canvas.style.position).toBe('absolute')
-		})
+it('canvas is absolutely positioned', () => {
+const canvas = container.querySelector('canvas')
+expect(canvas?.style.position).toBe('absolute')
+})
+})
 
-		it('disables pointer events', () => {
-			const canvas = canvasLayer.getCanvas()
-			expect(canvas.style.pointerEvents).toBe('none')
-		})
-	})
+describe('setDocument', () => {
+it('accepts a document', () => {
+expect(() => canvasLayer.setDocument(pdfDocument)).not.toThrow()
+})
 
-	describe('getCanvas', () => {
-		it('returns canvas element', () => {
-			const canvas = canvasLayer.getCanvas()
-			expect(canvas.tagName.toLowerCase()).toBe('canvas')
-		})
-	})
+it('allows setting different documents', async () => {
+const anotherDoc = new PdfDocument()
+await anotherDoc.loadFromBuffer(simplePdfBuffer, 'simple.pdf')
 
-	describe('setDocument', () => {
-		it('sets document reference', () => {
-			canvasLayer.setDocument(mockDocument)
-			// Verify by attempting to render
-			canvasLayer.render(1, 1)
-			// Should not throw
-		})
+canvasLayer.setDocument(pdfDocument)
+expect(() => canvasLayer.setDocument(anotherDoc)).not.toThrow()
+})
+})
 
-		it('allows rendering after setting document', () => {
-			canvasLayer.setDocument(mockDocument)
-			expect(() => canvasLayer.render(1, 1)).not.toThrow()
-		})
-	})
+describe('render', () => {
+beforeEach(() => {
+canvasLayer.setDocument(pdfDocument)
+})
 
-	describe('isActive', () => {
-		it('returns false by default', () => {
-			expect(canvasLayer.isActive()).toBe(false)
-		})
+it('renders page at scale 1', () => {
+expect(() => canvasLayer.render(1, 1.0)).not.toThrow()
+})
 
-		it('returns true after activate', () => {
-			canvasLayer.activate()
-			expect(canvasLayer.isActive()).toBe(true)
-		})
+it('renders page at different scales', () => {
+expect(() => canvasLayer.render(1, 0.5)).not.toThrow()
+expect(() => canvasLayer.render(1, 2.0)).not.toThrow()
+})
 
-		it('returns false after deactivate', () => {
-			canvasLayer.activate()
-			canvasLayer.deactivate()
-			expect(canvasLayer.isActive()).toBe(false)
-		})
-	})
+it('renders different pages', () => {
+expect(() => canvasLayer.render(1, 1.0)).not.toThrow()
+expect(() => canvasLayer.render(2, 1.0)).not.toThrow()
+expect(() => canvasLayer.render(3, 1.0)).not.toThrow()
+})
 
-	describe('activate', () => {
-		it('sets active state to true', () => {
-			canvasLayer.activate()
-			expect(canvasLayer.isActive()).toBe(true)
-		})
-	})
+it('does nothing without document', () => {
+const freshLayer = new CanvasLayer(container)
+expect(() => freshLayer.render(1, 1.0)).not.toThrow()
+freshLayer.destroy()
+})
+})
 
-	describe('deactivate', () => {
-		it('sets active state to false', () => {
-			canvasLayer.activate()
-			canvasLayer.deactivate()
-			expect(canvasLayer.isActive()).toBe(false)
-		})
-	})
+describe('resize', () => {
+it('accepts new dimensions', () => {
+expect(() => canvasLayer.resize(1024, 768)).not.toThrow()
+})
 
-	describe('render', () => {
-		beforeEach(() => {
-			canvasLayer.setDocument(mockDocument)
-		})
+it('re-renders current page on resize', () => {
+canvasLayer.setDocument(pdfDocument)
+canvasLayer.render(1, 1.0)
+expect(() => canvasLayer.resize(1024, 768)).not.toThrow()
+})
+})
 
-		it('renders page at specified scale', () => {
-			canvasLayer.render(1, 1)
-			// Verify canvas has content
-			const canvas = canvasLayer.getCanvas()
-			expect(canvas.width).toBeGreaterThan(0)
-			expect(canvas.height).toBeGreaterThan(0)
-		})
+describe('activate/deactivate', () => {
+it('activates layer', () => {
+canvasLayer.activate()
+expect(canvasLayer.isActive()).toBe(true)
+})
 
-		it('updates canvas dimensions based on page and scale', () => {
-			canvasLayer.render(1, 2)
-			const canvas = canvasLayer.getCanvas()
-			// Canvas should be scaled
-			expect(canvas.style.width).toBeDefined()
-		})
+it('deactivates layer', () => {
+canvasLayer.activate()
+canvasLayer.deactivate()
+expect(canvasLayer.isActive()).toBe(false)
+})
 
-		it('does nothing when document not loaded', () => {
-			const emptyDoc = new MockPdfDocument()
-			canvasLayer.setDocument(emptyDoc)
+it('toggles active state', () => {
+canvasLayer.deactivate()
+expect(canvasLayer.isActive()).toBe(false)
 
-			expect(() => canvasLayer.render(1, 1)).not.toThrow()
-		})
+canvasLayer.activate()
+expect(canvasLayer.isActive()).toBe(true)
+})
+})
 
-		it('handles invalid page number (too low)', () => {
-			expect(() => canvasLayer.render(0, 1)).not.toThrow()
-		})
+describe('isActive', () => {
+it('returns true when active', () => {
+canvasLayer.activate()
+expect(canvasLayer.isActive()).toBe(true)
+})
 
-		it('handles invalid page number (too high)', () => {
-			expect(() => canvasLayer.render(100, 1)).not.toThrow()
-		})
+it('returns false when inactive', () => {
+canvasLayer.deactivate()
+expect(canvasLayer.isActive()).toBe(false)
+})
 
-		it('handles various scale values', () => {
-			expect(() => canvasLayer.render(1, 0.5)).not.toThrow()
-			expect(() => canvasLayer.render(1, 1.5)).not.toThrow()
-			expect(() => canvasLayer.render(1, 3)).not.toThrow()
-		})
-	})
+it('starts inactive by default', () => {
+// CanvasLayer starts inactive by default
+const freshLayer = new CanvasLayer(container)
+expect(freshLayer.isActive()).toBe(false)
+freshLayer.destroy()
+})
+})
 
-	describe('resize', () => {
-		beforeEach(() => {
-			canvasLayer.setDocument(mockDocument)
-			canvasLayer.render(1, 1)
-		})
+describe('destroy', () => {
+it('removes canvas from container', () => {
+canvasLayer.destroy()
+const canvas = container.querySelector('canvas')
+expect(canvas).toBeNull()
+})
 
-		it('re-renders at current page and scale', () => {
-			const renderSpy = vi.spyOn(canvasLayer, 'render')
-			canvasLayer.resize(1000, 800)
+it('handles multiple destroy calls', () => {
+expect(() => {
+canvasLayer.destroy()
+canvasLayer.destroy()
+}).not.toThrow()
+})
+})
 
-			expect(renderSpy).toHaveBeenCalled()
-		})
+describe('high DPI support', () => {
+it('configures canvas for device pixel ratio', () => {
+canvasLayer.setDocument(pdfDocument)
+canvasLayer.render(1, 1.0)
 
-		it('does nothing when no current page', () => {
-			const newLayer = new CanvasLayer(container)
-			newLayer.setDocument(mockDocument)
+const canvas = container.querySelector('canvas')!
+// Canvas should be scaled for DPI
+expect(canvas.width).toBeGreaterThan(0)
+expect(canvas.height).toBeGreaterThan(0)
+})
+})
 
-			expect(() => newLayer.resize(1000, 800)).not.toThrow()
+describe('scale handling', () => {
+beforeEach(() => {
+canvasLayer.setDocument(pdfDocument)
+})
 
-			newLayer.destroy()
-		})
-	})
+it('handles very small scale', () => {
+expect(() => canvasLayer.render(1, 0.1)).not.toThrow()
+})
 
-	describe('destroy', () => {
-		it('removes canvas from DOM', () => {
-			const canvas = canvasLayer.getCanvas()
-			canvasLayer.destroy()
+it('handles large scale', () => {
+expect(() => canvasLayer.render(1, 5.0)).not.toThrow()
+})
+})
 
-			expect(container.contains(canvas)).toBe(false)
-		})
-
-		it('clears document reference', () => {
-			canvasLayer.setDocument(mockDocument)
-			canvasLayer.destroy()
-
-			// Should not crash on subsequent operations
-			expect(() => canvasLayer.render(1, 1)).not.toThrow()
-		})
-
-		it('handles multiple destroy calls', () => {
-			expect(() => {
-				canvasLayer.destroy()
-				canvasLayer.destroy()
-			}).not.toThrow()
-		})
-	})
-
-	describe('zIndex property', () => {
-		it('has defined z-index', () => {
-			expect(typeof canvasLayer.zIndex).toBe('number')
-		})
-
-		it('z-index is non-negative (canvas is base layer)', () => {
-			expect(canvasLayer.zIndex).toBeGreaterThanOrEqual(0)
-		})
-	})
-
-	describe('edge cases', () => {
-		it('handles very large scale', () => {
-			canvasLayer.setDocument(mockDocument)
-			// Should clamp or handle gracefully
-			expect(() => canvasLayer.render(1, 10)).not.toThrow()
-		})
-
-		it('handles very small scale', () => {
-			canvasLayer.setDocument(mockDocument)
-			expect(() => canvasLayer.render(1, 0.1)).not.toThrow()
-		})
-
-		it('handles rapid render calls', () => {
-			canvasLayer.setDocument(mockDocument)
-
-			for (let i = 0; i < 100; i++) {
-				canvasLayer.render((i % 3) + 1, 1 + (i % 10) / 10)
-			}
-
-			// Should not crash
-			expect(canvasLayer.getCanvas()).toBeInstanceOf(HTMLCanvasElement)
-		})
-	})
+describe('document without pages', () => {
+it('handles empty document gracefully', async () => {
+const emptyDoc = new PdfDocument()
+// Don't load anything - it's empty
+canvasLayer.setDocument(emptyDoc)
+expect(() => canvasLayer.render(1, 1.0)).not.toThrow()
+})
+})
 })

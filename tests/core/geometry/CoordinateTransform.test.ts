@@ -5,14 +5,14 @@
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { CoordinateTransform } from '~/src/core/geometry/CoordinateTransform.js'
-import { createMockElement } from '../../setup.js'
+import { createTestElement } from '../../setup.js'
 
 describe('CoordinateTransform', () => {
 	let transform: CoordinateTransform
 	let element: HTMLElement
 
 	beforeEach(() => {
-		element = createMockElement()
+		element = createTestElement()
 		element.style.position = 'absolute'
 		element.style.left = '0px'
 		element.style.top = '0px'

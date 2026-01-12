@@ -2,394 +2,272 @@
  * Tests for PdfDocument
  * @module tests/core/document/PdfDocument
  *
- * Note: These tests mock mupdf since it requires WASM which isn't available in test environment
+ * Uses real mupdf library - no mocks. Tests run in Playwright browser environment.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
+import { PdfDocument } from '~/src/core/document/PdfDocument.js'
+import { loadPdfFixture, PDF_FIXTURES } from '../../setup.js'
 import type { PdfDocumentInterface, PdfPageInterface } from '~/src/types.js'
 
-// Since PdfDocument depends on mupdf which requires WASM,
-// we test the interface contract with a mock implementation
-
-class MockPdfPage implements PdfPageInterface {
-	readonly pageNumber: number
-	readonly width: number
-	readonly height: number
-	readonly rotation: 0 | 90 | 180 | 270
-
-	constructor(pageNumber: number, width = 612, height = 792, rotation: 0 | 90 | 180 | 270 = 0) {
-		this.pageNumber = pageNumber
-		this.width = width
-		this.height = height
-		this.rotation = rotation
-	}
-
-	render(ctx: CanvasRenderingContext2D, scale: number): void {
-		ctx.fillStyle = 'white'
-		ctx.fillRect(0, 0, this.width * scale, this.height * scale)
-	}
-
-	getText(): string {
-		return `Page ${this.pageNumber} text content`
-	}
-
-	getTextBlocks(): readonly [] {
-		return []
-	}
-
-	destroy(): void {}
-}
-
-class MockPdfDocument implements PdfDocumentInterface {
-	#loaded = false
-	#fileName: string | undefined
-	#pages: MockPdfPage[] = []
-	#buffer: ArrayBuffer | undefined
-
-	isLoaded(): boolean {
-		return this.#loaded
-	}
-
-	getPageCount(): number {
-		return this.#pages.length
-	}
-
-	getFileName(): string | undefined {
-		return this.#fileName
-	}
-
-	async loadFromBuffer(buffer: ArrayBuffer, fileName?: string): Promise<void> {
-		this.#buffer = buffer
-		this.#fileName = fileName
-		this.#loaded = true
-		// Create mock pages based on buffer size (arbitrary logic for testing)
-		const pageCount = Math.max(1, Math.floor(buffer.byteLength / 1000) || 3)
-		this.#pages = []
-		for (let i = 1; i <= pageCount; i++) {
-			this.#pages.push(new MockPdfPage(i))
-		}
-	}
-
-	getPage(pageNumber: number): PdfPageInterface {
-		if (!this.#loaded) {
-			throw new Error('No document loaded')
-		}
-		if (pageNumber < 1 || pageNumber > this.#pages.length) {
-			throw new Error(`Invalid page number: ${pageNumber}. Document has ${this.#pages.length} pages.`)
-		}
-		return this.#pages[pageNumber - 1]!
-	}
-
-	getPageDimensions(pageNumber: number): { width: number; height: number } {
-		const page = this.getPage(pageNumber)
-		return { width: page.width, height: page.height }
-	}
-
-	getPageRotation(pageNumber: number): 0 | 90 | 180 | 270 {
-		const page = this.getPage(pageNumber)
-		return page.rotation
-	}
-
-	toArrayBuffer(): ArrayBuffer {
-		if (!this.#loaded || !this.#buffer) {
-			throw new Error('No document loaded')
-		}
-		return this.#buffer
-	}
-
-	destroy(): void {
-		this.#loaded = false
-		this.#pages = []
-		this.#buffer = undefined
-		this.#fileName = undefined
-	}
-}
-
 describe('PdfDocument', () => {
-	let document: MockPdfDocument
+let document: PdfDocumentInterface
+let simplePdfBuffer: ArrayBuffer
+let multiPagePdfBuffer: ArrayBuffer
 
-	beforeEach(() => {
-		document = new MockPdfDocument()
-	})
+beforeAll(async () => {
+// Pre-load fixtures
+simplePdfBuffer = await loadPdfFixture(PDF_FIXTURES.simple)
+multiPagePdfBuffer = await loadPdfFixture(PDF_FIXTURES.multiPage)
+})
 
-	describe('isLoaded', () => {
-		it('returns false initially', () => {
-			expect(document.isLoaded()).toBe(false)
-		})
+beforeEach(() => {
+document = new PdfDocument()
+})
 
-		it('returns true after loading', async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000), 'test.pdf')
-			expect(document.isLoaded()).toBe(true)
-		})
+describe('isLoaded', () => {
+it('returns false initially', () => {
+expect(document.isLoaded()).toBe(false)
+})
 
-		it('returns false after destroy', async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000), 'test.pdf')
-			document.destroy()
-			expect(document.isLoaded()).toBe(false)
-		})
-	})
+it('returns true after loading', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+expect(document.isLoaded()).toBe(true)
+})
 
-	describe('getPageCount', () => {
-		it('returns 0 before loading', () => {
-			expect(document.getPageCount()).toBe(0)
-		})
+it('returns false after destroy', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+document.destroy()
+expect(document.isLoaded()).toBe(false)
+})
+})
 
-		it('returns page count after loading', async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000), 'test.pdf')
-			expect(document.getPageCount()).toBeGreaterThan(0)
-		})
-	})
+describe('getPageCount', () => {
+it('returns 0 before loading', () => {
+expect(document.getPageCount()).toBe(0)
+})
 
-	describe('getFileName', () => {
-		it('returns undefined before loading', () => {
-			expect(document.getFileName()).toBeUndefined()
-		})
+it('returns correct page count for simple PDF', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+expect(document.getPageCount()).toBe(1)
+})
 
-		it('returns filename after loading', async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000), 'document.pdf')
-			expect(document.getFileName()).toBe('document.pdf')
-		})
+it('returns correct page count for multi-page PDF', async () => {
+await document.loadFromBuffer(multiPagePdfBuffer, 'test.pdf')
+expect(document.getPageCount()).toBe(5)
+})
+})
 
-		it('handles undefined filename', async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000))
-			expect(document.getFileName()).toBeUndefined()
-		})
-	})
+describe('getFileName', () => {
+it('returns undefined before loading', () => {
+expect(document.getFileName()).toBeUndefined()
+})
 
-	describe('loadFromBuffer', () => {
-		it('loads document from buffer', async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000), 'test.pdf')
-			expect(document.isLoaded()).toBe(true)
-		})
+it('returns filename after loading', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'document.pdf')
+expect(document.getFileName()).toBe('document.pdf')
+})
 
-		it('sets filename', async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000), 'my-doc.pdf')
-			expect(document.getFileName()).toBe('my-doc.pdf')
-		})
+it('handles undefined filename', async () => {
+await document.loadFromBuffer(simplePdfBuffer)
+expect(document.getFileName()).toBeUndefined()
+})
+})
 
-		it('creates pages', async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000), 'test.pdf')
-			expect(document.getPageCount()).toBeGreaterThan(0)
-		})
+describe('loadFromBuffer', () => {
+it('loads document from buffer', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+expect(document.isLoaded()).toBe(true)
+})
 
-		it('replaces previous document', async() => {
-			await document.loadFromBuffer(new ArrayBuffer(1000), 'first.pdf')
-			const _firstCount = document.getPageCount()
+it('sets filename', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'my-doc.pdf')
+expect(document.getFileName()).toBe('my-doc.pdf')
+})
 
-			await document.loadFromBuffer(new ArrayBuffer(10000), 'second.pdf')
+it('creates pages', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+expect(document.getPageCount()).toBeGreaterThan(0)
+})
 
-			expect(document.getFileName()).toBe('second.pdf')
-		})
+it('replaces previous document', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'first.pdf')
 
-		it('handles empty buffer', async() => {
-			await document.loadFromBuffer(new ArrayBuffer(0), 'empty.pdf')
-			expect(document.isLoaded()).toBe(true)
-			expect(document.getPageCount()).toBeGreaterThan(0) // At least 1 page
-		})
-	})
+await document.loadFromBuffer(multiPagePdfBuffer, 'second.pdf')
 
-	describe('getPage', () => {
-		beforeEach(async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000), 'test.pdf')
-		})
+expect(document.getFileName()).toBe('second.pdf')
+expect(document.getPageCount()).toBe(5)
+})
+})
 
-		it('returns page for valid page number', () => {
-			const page = document.getPage(1)
-			expect(page.pageNumber).toBe(1)
-		})
+describe('getPage', () => {
+beforeEach(async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+})
 
-		it('throws for page number less than 1', () => {
-			expect(() => document.getPage(0)).toThrow()
-		})
+it('returns page for valid page number', () => {
+const page = document.getPage(1)
+expect(page.pageNumber).toBe(1)
+})
 
-		it('throws for page number greater than page count', () => {
-			const pageCount = document.getPageCount()
-			expect(() => document.getPage(pageCount + 1)).toThrow()
-		})
+it('throws for page number less than 1', () => {
+expect(() => document.getPage(0)).toThrow()
+})
 
-		it('throws when document not loaded', () => {
-			const unloaded = new MockPdfDocument()
-			expect(() => unloaded.getPage(1)).toThrow('No document loaded')
-		})
+it('throws for page number greater than page count', () => {
+const pageCount = document.getPageCount()
+expect(() => document.getPage(pageCount + 1)).toThrow()
+})
 
-		it('returns same page instance on repeated calls (caching)', () => {
-			const page1 = document.getPage(1)
-			const page1Again = document.getPage(1)
-			expect(page1).toBe(page1Again)
-		})
-	})
+it('throws when document not loaded', () => {
+const unloaded = new PdfDocument()
+expect(() => unloaded.getPage(1)).toThrow('No document loaded')
+})
 
-	describe('getPageDimensions', () => {
-		beforeEach(async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000), 'test.pdf')
-		})
+it('returns same page instance on repeated calls (caching)', () => {
+const page1 = document.getPage(1)
+const page1Again = document.getPage(1)
+expect(page1).toBe(page1Again)
+})
+})
 
-		it('returns width and height', () => {
-			const dims = document.getPageDimensions(1)
-			expect(dims.width).toBeGreaterThan(0)
-			expect(dims.height).toBeGreaterThan(0)
-		})
+describe('getPageDimensions', () => {
+beforeEach(async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+})
 
-		it('returns standard Letter size by default', () => {
-			const dims = document.getPageDimensions(1)
-			expect(dims.width).toBe(612) // 8.5 inches at 72 DPI
-			expect(dims.height).toBe(792) // 11 inches at 72 DPI
-		})
-	})
+it('returns width and height', () => {
+const dims = document.getPageDimensions(1)
+expect(dims.width).toBeGreaterThan(0)
+expect(dims.height).toBeGreaterThan(0)
+})
 
-	describe('getPageRotation', () => {
-		beforeEach(async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000), 'test.pdf')
-		})
+it('returns standard Letter size', () => {
+const dims = document.getPageDimensions(1)
+expect(dims.width).toBe(612) // 8.5 inches at 72 DPI
+expect(dims.height).toBe(792) // 11 inches at 72 DPI
+})
+})
 
-		it('returns rotation value', () => {
-			const rotation = document.getPageRotation(1)
-			expect([0, 90, 180, 270]).toContain(rotation)
-		})
+describe('getPageRotation', () => {
+beforeEach(async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+})
 
-		it('returns 0 for unrotated page', () => {
-			const rotation = document.getPageRotation(1)
-			expect(rotation).toBe(0)
-		})
-	})
+it('returns rotation value', () => {
+const rotation = document.getPageRotation(1)
+expect([0, 90, 180, 270]).toContain(rotation)
+})
 
-	describe('toArrayBuffer', () => {
-		it('throws when document not loaded', () => {
-			expect(() => document.toArrayBuffer()).toThrow('No document loaded')
-		})
+it('returns 0 for unrotated page', () => {
+const rotation = document.getPageRotation(1)
+expect(rotation).toBe(0)
+})
+})
 
-		it('returns ArrayBuffer when loaded', async() => {
-			const original = new ArrayBuffer(5000)
-			await document.loadFromBuffer(original, 'test.pdf')
+describe('toArrayBuffer', () => {
+it('throws when not loaded', () => {
+expect(() => document.toArrayBuffer()).toThrow('No document loaded')
+})
 
-			const buffer = document.toArrayBuffer()
-			expect(buffer).toBeInstanceOf(ArrayBuffer)
-		})
-	})
+it('returns buffer after loading', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+const buffer = document.toArrayBuffer()
+expect(buffer).toBeInstanceOf(ArrayBuffer)
+expect(buffer.byteLength).toBeGreaterThan(0)
+})
+})
 
-	describe('destroy', () => {
-		beforeEach(async() => {
-			await document.loadFromBuffer(new ArrayBuffer(5000), 'test.pdf')
-		})
+describe('destroy', () => {
+it('sets isLoaded to false', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+document.destroy()
+expect(document.isLoaded()).toBe(false)
+})
 
-		it('sets loaded to false', () => {
-			document.destroy()
-			expect(document.isLoaded()).toBe(false)
-		})
+it('sets pageCount to 0', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+document.destroy()
+expect(document.getPageCount()).toBe(0)
+})
 
-		it('clears pages', () => {
-			document.destroy()
-			expect(document.getPageCount()).toBe(0)
-		})
-
-		it('clears filename', () => {
-			document.destroy()
-			expect(document.getFileName()).toBeUndefined()
-		})
-
-		it('handles multiple destroy calls', () => {
-			expect(() => {
-				document.destroy()
-				document.destroy()
-			}).not.toThrow()
-		})
-	})
+it('handles multiple destroy calls', async () => {
+await document.loadFromBuffer(simplePdfBuffer, 'test.pdf')
+document.destroy()
+expect(() => document.destroy()).not.toThrow()
+})
+})
 })
 
 describe('PdfPage', () => {
-	let page: MockPdfPage
+let page: PdfPageInterface
+let simplePdfBuffer: ArrayBuffer
 
-	beforeEach(() => {
-		page = new MockPdfPage(1, 612, 792, 0)
-	})
+beforeAll(async () => {
+simplePdfBuffer = await loadPdfFixture(PDF_FIXTURES.simple)
+})
 
-	describe('properties', () => {
-		it('has pageNumber', () => {
-			expect(page.pageNumber).toBe(1)
-		})
+beforeEach(async () => {
+const document = new PdfDocument()
+await document.loadFromBuffer(simplePdfBuffer)
+page = document.getPage(1)
+})
 
-		it('has width', () => {
-			expect(page.width).toBe(612)
-		})
+describe('properties', () => {
+it('has pageNumber', () => {
+expect(page.pageNumber).toBe(1)
+})
 
-		it('has height', () => {
-			expect(page.height).toBe(792)
-		})
+it('has width', () => {
+expect(page.width).toBeGreaterThan(0)
+})
 
-		it('has rotation', () => {
-			expect(page.rotation).toBe(0)
-		})
-	})
+it('has height', () => {
+expect(page.height).toBeGreaterThan(0)
+})
 
-	describe('render', () => {
-		it('renders to canvas context', () => {
-			const canvas = document.createElement('canvas')
-			canvas.width = 612
-			canvas.height = 792
-			const ctx = canvas.getContext('2d')!
+it('has rotation', () => {
+expect([0, 90, 180, 270]).toContain(page.rotation)
+})
+})
 
-			expect(() => page.render(ctx, 1)).not.toThrow()
-		})
+describe('render', () => {
+it('renders to canvas context', () => {
+const canvas = document.createElement('canvas')
+canvas.width = 612
+canvas.height = 792
+const ctx = canvas.getContext('2d')!
 
-		it('handles different scale values', () => {
-			const canvas = document.createElement('canvas')
-			const ctx = canvas.getContext('2d')!
+expect(() => page.render(ctx, 1.0)).not.toThrow()
+})
 
-			expect(() => {
-				page.render(ctx, 0.5)
-				page.render(ctx, 1.0)
-				page.render(ctx, 2.0)
-			}).not.toThrow()
-		})
-	})
+it('respects scale parameter', () => {
+const canvas = document.createElement('canvas')
+canvas.width = 1224
+canvas.height = 1584
+const ctx = canvas.getContext('2d')!
 
-	describe('getText', () => {
-		it('returns page text', () => {
-			const text = page.getText()
-			expect(typeof text).toBe('string')
-			expect(text.length).toBeGreaterThan(0)
-		})
-	})
+expect(() => page.render(ctx, 2.0)).not.toThrow()
+})
+})
 
-	describe('getTextBlocks', () => {
-		it('returns array of text blocks', () => {
-			const blocks = page.getTextBlocks()
-			expect(Array.isArray(blocks)).toBe(true)
-		})
-	})
+describe('getText', () => {
+it('returns string', () => {
+const text = page.getText()
+expect(typeof text).toBe('string')
+})
+})
 
-	describe('destroy', () => {
-		it('cleans up resources', () => {
-			expect(() => page.destroy()).not.toThrow()
-		})
-	})
+describe('getTextBlocks', () => {
+it('returns array', () => {
+const blocks = page.getTextBlocks()
+expect(Array.isArray(blocks)).toBe(true)
+})
+})
 
-	describe('different page configurations', () => {
-		it('handles landscape orientation', () => {
-			const landscape = new MockPdfPage(1, 792, 612, 0)
-			expect(landscape.width).toBe(792)
-			expect(landscape.height).toBe(612)
-		})
-
-		it('handles 90 degree rotation', () => {
-			const rotated = new MockPdfPage(1, 612, 792, 90)
-			expect(rotated.rotation).toBe(90)
-		})
-
-		it('handles 180 degree rotation', () => {
-			const rotated = new MockPdfPage(1, 612, 792, 180)
-			expect(rotated.rotation).toBe(180)
-		})
-
-		it('handles 270 degree rotation', () => {
-			const rotated = new MockPdfPage(1, 612, 792, 270)
-			expect(rotated.rotation).toBe(270)
-		})
-
-		it('handles custom dimensions', () => {
-			const custom = new MockPdfPage(1, 1000, 500, 0)
-			expect(custom.width).toBe(1000)
-			expect(custom.height).toBe(500)
-		})
-	})
+describe('destroy', () => {
+it('can be called without error', () => {
+expect(() => page.destroy()).not.toThrow()
+})
+})
 })

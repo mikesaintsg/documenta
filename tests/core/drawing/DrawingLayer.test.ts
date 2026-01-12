@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { DrawingLayer } from '~/src/core/drawing/DrawingLayer.js'
-import { createMockElement } from '../../setup.js'
+import { createTestElement } from '../../setup.js'
 import type { Color } from '~/src/types.js'
 
 // Helper to create pointer events
@@ -31,7 +31,7 @@ describe('DrawingLayer', () => {
 	let drawingLayer: DrawingLayer
 
 	beforeEach(() => {
-		container = createMockElement()
+		container = createTestElement()
 		container.style.width = '800px'
 		container.style.height = '600px'
 		document.body.appendChild(container)
