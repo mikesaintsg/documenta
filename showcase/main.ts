@@ -430,12 +430,14 @@ function initializeEditor(): void {
 }
 
 function updateUndoRedoButtons(): void {
-	// Drawing layer undo/redo - would require getting the drawing layer
-	// For now, we'll leave them enabled when in draw mode
-	const canUndo = state.currentMode === 'draw'
-	const canRedo = state.currentMode === 'draw'
-	elements.btnUndo.disabled = !canUndo
-	elements.btnRedo.disabled = !canRedo
+	const drawingLayer = state.editor?.getDrawingLayer()
+	if (drawingLayer && state.currentMode === 'draw') {
+		elements.btnUndo.disabled = !drawingLayer.canUndo()
+		elements.btnRedo.disabled = !drawingLayer.canRedo()
+	} else {
+		elements.btnUndo.disabled = true
+		elements.btnRedo.disabled = true
+	}
 }
 
 // ============================================================================
@@ -497,38 +499,79 @@ elements.btnFit.addEventListener('click', () => {
 // Drawing tools
 elements.btnPen.addEventListener('click', () => {
 	updateToolButtons('pen')
-	// TODO: Set tool on drawing layer when integrated
+	const drawingLayer = state.editor?.getDrawingLayer()
+	if (drawingLayer) {
+		drawingLayer.setTool('pen')
+	}
 })
 
 elements.btnHighlighter.addEventListener('click', () => {
 	updateToolButtons('highlighter')
+	const drawingLayer = state.editor?.getDrawingLayer()
+	if (drawingLayer) {
+		drawingLayer.setTool('highlighter')
+	}
 })
 
 elements.btnEraser.addEventListener('click', () => {
 	updateToolButtons('eraser')
+	const drawingLayer = state.editor?.getDrawingLayer()
+	if (drawingLayer) {
+		drawingLayer.setTool('eraser')
+	}
 })
 
-// Color selection
-elements.colorBlack.addEventListener('click', () => updateColorButtons('color-black'))
-elements.colorRed.addEventListener('click', () => updateColorButtons('color-red'))
-elements.colorBlue.addEventListener('click', () => updateColorButtons('color-blue'))
-elements.colorGreen.addEventListener('click', () => updateColorButtons('color-green'))
-elements.colorYellow.addEventListener('click', () => updateColorButtons('color-yellow'))
+// Color selection - map color button IDs to RGB values
+const colorMap: Record<string, { r: number; g: number; b: number }> = {
+	'color-black': { r: 0, g: 0, b: 0 },
+	'color-red': { r: 0.863, g: 0.149, b: 0.149 }, // #dc2626
+	'color-blue': { r: 0.145, g: 0.388, b: 0.922 }, // #2563eb
+	'color-green': { r: 0.086, g: 0.639, b: 0.290 }, // #16a34a
+	'color-yellow': { r: 0.918, g: 0.702, b: 0.031 }, // #eab308
+}
+
+function setDrawingColor(colorId: string): void {
+	updateColorButtons(colorId)
+	const color = colorMap[colorId]
+	if (color) {
+		const drawingLayer = state.editor?.getDrawingLayer()
+		if (drawingLayer) {
+			drawingLayer.setColor(color)
+		}
+	}
+}
+
+elements.colorBlack.addEventListener('click', () => setDrawingColor('color-black'))
+elements.colorRed.addEventListener('click', () => setDrawingColor('color-red'))
+elements.colorBlue.addEventListener('click', () => setDrawingColor('color-blue'))
+elements.colorGreen.addEventListener('click', () => setDrawingColor('color-green'))
+elements.colorYellow.addEventListener('click', () => setDrawingColor('color-yellow'))
 
 // Undo/Redo/Clear
 elements.btnUndo.addEventListener('click', () => {
-	// TODO: Call drawing layer undo
-	showToast('↩️ Undo')
+	const drawingLayer = state.editor?.getDrawingLayer()
+	if (drawingLayer && drawingLayer.canUndo()) {
+		drawingLayer.undo()
+		showToast('↩️ Undo')
+		updateUndoRedoButtons()
+	}
 })
 
 elements.btnRedo.addEventListener('click', () => {
-	// TODO: Call drawing layer redo
-	showToast('↪️ Redo')
+	const drawingLayer = state.editor?.getDrawingLayer()
+	if (drawingLayer && drawingLayer.canRedo()) {
+		drawingLayer.redo()
+		showToast('↪️ Redo')
+		updateUndoRedoButtons()
+	}
 })
 
 elements.btnClear.addEventListener('click', () => {
-	// TODO: Call drawing layer clear
-	showToast('🗑️ Page cleared')
+	const drawingLayer = state.editor?.getDrawingLayer()
+	if (drawingLayer && state.editor) {
+		drawingLayer.clearPage(state.editor.getCurrentPage())
+		showToast('🗑️ Page cleared')
+	}
 })
 
 // ============================================================================

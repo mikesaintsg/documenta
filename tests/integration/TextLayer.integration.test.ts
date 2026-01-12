@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest'
 import { TextLayer } from '~/src/core/text/TextLayer.js'
-import { createTestElement, loadPdfFixture, PDF_FIXTURES, createLoadedPdfDocument } from '../setup.js'
+import { createTestElement, PDF_FIXTURES, createLoadedPdfDocument } from '../setup.js'
 import type { TextSelection, PdfDocumentInterface } from '~/src/types.js'
 
 describe('TextLayer Integration', () => {
@@ -15,7 +15,7 @@ describe('TextLayer Integration', () => {
 	let textLayer: TextLayer
 	let pdfDocument: PdfDocumentInterface
 
-	beforeAll(async () => {
+	beforeAll(async() => {
 		// Pre-load document for tests that need it
 		pdfDocument = await createLoadedPdfDocument(PDF_FIXTURES.searchable)
 	})
@@ -118,7 +118,7 @@ describe('TextLayer Integration', () => {
 	})
 
 	describe('Copy to Clipboard', () => {
-		it('should not throw when copying without selection', async () => {
+		it('should not throw when copying without selection', async() => {
 			await expect(textLayer.copySelection()).resolves.not.toThrow()
 		})
 	})

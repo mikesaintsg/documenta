@@ -27,7 +27,7 @@ describe('Fixture-based Integration Tests', () => {
 		blank: new ArrayBuffer(0),
 	}
 
-	beforeAll(async () => {
+	beforeAll(async() => {
 		// Fetch all fixtures
 		const [simple, multiPage, searchable, blank] = await Promise.all([
 			loadPdfFixture(PDF_FIXTURES.simple),
@@ -118,7 +118,7 @@ describe('Fixture-based Integration Tests', () => {
 	})
 
 	describe('Document Loading with Fixtures', () => {
-		it('should load simple.pdf File object', async () => {
+		it('should load simple.pdf File object', async() => {
 			const file = new File([fixtures.simple], 'simple.pdf', { type: 'application/pdf' })
 			await editor.load(file)
 
@@ -126,14 +126,14 @@ describe('Fixture-based Integration Tests', () => {
 			expect(editor.getFileName()).toBe('simple.pdf')
 		})
 
-		it('should load from buffer with filename', async () => {
+		it('should load from buffer with filename', async() => {
 			await editor.loadFromBuffer(fixtures.simple, 'simple.pdf')
 
 			expect(editor.isLoaded()).toBe(true)
 			expect(editor.getFileName()).toBe('simple.pdf')
 		})
 
-		it('should load from buffer without filename', async () => {
+		it('should load from buffer without filename', async() => {
 			await editor.loadFromBuffer(fixtures.simple)
 
 			expect(editor.isLoaded()).toBe(true)
@@ -141,7 +141,7 @@ describe('Fixture-based Integration Tests', () => {
 	})
 
 	describe('Navigation with Real Multi-Page Document', () => {
-		beforeEach(async () => {
+		beforeEach(async() => {
 			await editor.loadFromBuffer(fixtures.multiPage, 'multi-page.pdf')
 		})
 
@@ -186,7 +186,7 @@ describe('Fixture-based Integration Tests', () => {
 	})
 
 	describe('Zoom Operations', () => {
-		beforeEach(async () => {
+		beforeEach(async() => {
 			await editor.loadFromBuffer(fixtures.simple, 'simple.pdf')
 		})
 
@@ -220,7 +220,7 @@ describe('Fixture-based Integration Tests', () => {
 	})
 
 	describe('Mode Switching', () => {
-		beforeEach(async () => {
+		beforeEach(async() => {
 			await editor.loadFromBuffer(fixtures.simple, 'simple.pdf')
 		})
 
@@ -260,7 +260,7 @@ describe('Fixture-based Integration Tests', () => {
 	})
 
 	describe('Document State', () => {
-		it('should report correct state after load', async () => {
+		it('should report correct state after load', async() => {
 			await editor.loadFromBuffer(fixtures.simple, 'simple.pdf')
 
 			const state = editor.getState()
@@ -271,14 +271,14 @@ describe('Fixture-based Integration Tests', () => {
 			expect(state.zoom).toBe(1)
 		})
 
-		it('should have no unsaved changes after load', async () => {
+		it('should have no unsaved changes after load', async() => {
 			await editor.loadFromBuffer(fixtures.simple, 'simple.pdf')
 			expect(editor.hasUnsavedChanges()).toBe(false)
 		})
 	})
 
 	describe('Event Callbacks', () => {
-		it('should fire load callback with correct data', async () => {
+		it('should fire load callback with correct data', async() => {
 			let loadedFileName = ''
 			let loadedPageCount = 0
 
@@ -293,7 +293,7 @@ describe('Fixture-based Integration Tests', () => {
 			expect(loadedPageCount).toBe(5)
 		})
 
-		it('should fire page change callback', async () => {
+		it('should fire page change callback', async() => {
 			await editor.loadFromBuffer(fixtures.multiPage, 'multi-page.pdf')
 
 			let changedPage = 0
@@ -305,7 +305,7 @@ describe('Fixture-based Integration Tests', () => {
 			expect(changedPage).toBe(3)
 		})
 
-		it('should fire zoom change callback', async () => {
+		it('should fire zoom change callback', async() => {
 			await editor.loadFromBuffer(fixtures.simple, 'simple.pdf')
 
 			let changedZoom = 0
@@ -317,7 +317,7 @@ describe('Fixture-based Integration Tests', () => {
 			expect(changedZoom).toBe(1.5)
 		})
 
-		it('should allow unsubscribing from callbacks', async () => {
+		it('should allow unsubscribing from callbacks', async() => {
 			await editor.loadFromBuffer(fixtures.multiPage, 'multi-page.pdf')
 
 			let callCount = 0
@@ -340,7 +340,7 @@ describe('Fixture-based Integration Tests', () => {
 	})
 
 	describe('Error Handling', () => {
-		it('should reject invalid PDF files on load', async () => {
+		it('should reject invalid PDF files on load', async() => {
 			const invalidFile = new File(['not a pdf'], 'test.txt', { type: 'text/plain' })
 
 			await expect(editor.load(invalidFile)).rejects.toThrow()
@@ -357,7 +357,7 @@ describe('Fixture-based Integration Tests', () => {
 	})
 
 	describe('Lifecycle', () => {
-		it('should properly destroy editor', async () => {
+		it('should properly destroy editor', async() => {
 			await editor.loadFromBuffer(fixtures.simple, 'simple.pdf')
 
 			editor.destroy()

@@ -15,7 +15,7 @@ describe('FormLayer Integration', () => {
 	let formLayer: FormLayer
 	let pdfDocument: PdfDocumentInterface
 
-	beforeAll(async () => {
+	beforeAll(async() => {
 		// Pre-load document for tests that need it
 		pdfDocument = await createLoadedPdfDocument(PDF_FIXTURES.form)
 	})

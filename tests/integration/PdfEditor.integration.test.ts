@@ -15,7 +15,7 @@ describe('PdfEditor Integration', () => {
 	let editor: PdfEditor
 	let simplePdfBuffer: ArrayBuffer
 
-	beforeEach(async () => {
+	beforeEach(async() => {
 		container = createTestElement()
 		container.style.width = '800px'
 		container.style.height = '600px'
@@ -40,7 +40,7 @@ describe('PdfEditor Integration', () => {
 			expect(editor.getMode()).toBe('pan')
 		})
 
-		it('should load document and update state', async () => {
+		it('should load document and update state', async() => {
 			await editor.loadFromBuffer(simplePdfBuffer, 'test.pdf')
 
 			expect(editor.isLoaded()).toBe(true)
@@ -49,7 +49,7 @@ describe('PdfEditor Integration', () => {
 			expect(editor.getFileName()).toBe('test.pdf')
 		})
 
-		it('should emit load event with correct data', async () => {
+		it('should emit load event with correct data', async() => {
 			let loadedFileName = ''
 			let loadedPageCount = 0
 
@@ -64,7 +64,7 @@ describe('PdfEditor Integration', () => {
 			expect(loadedPageCount).toBeGreaterThan(0)
 		})
 
-		it('should clean up on destroy', async () => {
+		it('should clean up on destroy', async() => {
 			await editor.loadFromBuffer(simplePdfBuffer, 'test.pdf')
 
 			editor.destroy()
@@ -74,7 +74,7 @@ describe('PdfEditor Integration', () => {
 	})
 
 	describe('Navigation Workflow', () => {
-		beforeEach(async () => {
+		beforeEach(async() => {
 			// Use multi-page fixture for navigation tests
 			const multiPageBuffer = await loadPdfFixture(PDF_FIXTURES.multiPage)
 			await editor.loadFromBuffer(multiPageBuffer, 'test.pdf')
@@ -117,7 +117,7 @@ describe('PdfEditor Integration', () => {
 	})
 
 	describe('Zoom Workflow', () => {
-		beforeEach(async () => {
+		beforeEach(async() => {
 			await editor.loadFromBuffer(simplePdfBuffer, 'test.pdf')
 		})
 
@@ -191,7 +191,7 @@ describe('PdfEditor Integration', () => {
 	})
 
 	describe('State Snapshot', () => {
-		it('should return complete state snapshot', async () => {
+		it('should return complete state snapshot', async() => {
 			await editor.loadFromBuffer(simplePdfBuffer, 'document.pdf')
 			editor.setMode('draw')
 			editor.setZoom(1.5)
@@ -246,7 +246,7 @@ describe('PdfEditor Integration', () => {
 	})
 
 	describe('Error Handling', () => {
-		it('should emit error for invalid PDF file', async () => {
+		it('should emit error for invalid PDF file', async() => {
 			let errorReceived: Error | null = null
 			editor.onError((error) => {
 				errorReceived = error
@@ -263,7 +263,7 @@ describe('PdfEditor Integration', () => {
 			expect(errorReceived).not.toBeNull()
 		})
 
-		it('should throw when saving without document', async () => {
+		it('should throw when saving without document', async() => {
 			await expect(editor.save()).rejects.toThrow()
 		})
 
@@ -273,7 +273,7 @@ describe('PdfEditor Integration', () => {
 	})
 
 	describe('Options Callbacks', () => {
-		it('should call option callbacks on events', async () => {
+		it('should call option callbacks on events', async() => {
 			container.remove()
 			container = createTestElement()
 			container.style.width = '800px'

@@ -16,7 +16,7 @@ describe('PdfEditor', () => {
 	let editor: PdfEditor
 	let simplePdfBuffer: ArrayBuffer
 
-	beforeAll(async () => {
+	beforeAll(async() => {
 		// Pre-load the simple PDF fixture
 		simplePdfBuffer = await loadPdfFixture(PDF_FIXTURES.simple)
 	})
@@ -373,20 +373,24 @@ describe('PdfEditor', () => {
 	})
 
 	describe('layer access methods', () => {
-		it('getTextLayer returns undefined', () => {
-			expect(editor.getTextLayer()).toBeUndefined()
+		it('getTextLayer returns TextLayer', () => {
+			expect(editor.getTextLayer()).toBeDefined()
+			expect(editor.getTextLayer()?.zIndex).toBe(10)
 		})
 
-		it('getDrawingLayer returns undefined', () => {
-			expect(editor.getDrawingLayer()).toBeUndefined()
+		it('getDrawingLayer returns DrawingLayer', () => {
+			expect(editor.getDrawingLayer()).toBeDefined()
+			expect(editor.getDrawingLayer()?.zIndex).toBe(20)
 		})
 
-		it('getFormLayer returns undefined', () => {
-			expect(editor.getFormLayer()).toBeUndefined()
+		it('getFormLayer returns FormLayer', () => {
+			expect(editor.getFormLayer()).toBeDefined()
+			expect(editor.getFormLayer()?.zIndex).toBe(30)
 		})
 
-		it('getAnnotationLayer returns undefined', () => {
-			expect(editor.getAnnotationLayer()).toBeUndefined()
+		it('getAnnotationLayer returns AnnotationLayer', () => {
+			expect(editor.getAnnotationLayer()).toBeDefined()
+			expect(editor.getAnnotationLayer()?.zIndex).toBe(40)
 		})
 	})
 
@@ -520,7 +524,7 @@ describe('PdfEditor', () => {
 	})
 
 	describe('load operations', () => {
-		it('rejects invalid file type', async () => {
+		it('rejects invalid file type', async() => {
 			const errorCallback = vi.fn()
 			editor.onError(errorCallback)
 
@@ -530,7 +534,7 @@ describe('PdfEditor', () => {
 			expect(errorCallback).toHaveBeenCalled()
 		})
 
-		it('loadFromBuffer accepts ArrayBuffer', async () => {
+		it('loadFromBuffer accepts ArrayBuffer', async() => {
 			// Uses real PdfDocument with fixture buffer
 			await expect(editor.loadFromBuffer(simplePdfBuffer, 'test.pdf')).resolves.not.toThrow()
 		})

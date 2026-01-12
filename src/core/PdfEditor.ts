@@ -46,6 +46,10 @@ import {
 } from '../helpers.js'
 import { FileManager } from './file/FileManager.js'
 import { CanvasLayer } from './layers/CanvasLayer.js'
+import { DrawingLayer } from './drawing/DrawingLayer.js'
+import { TextLayer } from './text/TextLayer.js'
+import { FormLayer } from './form/FormLayer.js'
+import { AnnotationLayer } from './annotation/AnnotationLayer.js'
 
 // Dynamic import for PdfDocument to avoid WASM loading at import time
 let PdfDocumentClass: (new () => PdfDocumentInterface) | undefined
@@ -86,6 +90,16 @@ export class PdfEditor implements EditorInterface {
 	#documentFactory: (() => PdfDocumentInterface) | undefined
 	#fileManager: FileManager
 	#canvasLayer: CanvasLayer
+	#textLayer: TextLayer | undefined
+	#drawingLayer: DrawingLayer | undefined
+	#formLayer: FormLayer | undefined
+	#annotationLayer: AnnotationLayer | undefined
+
+	// Layer enable flags
+	#enableTextLayer: boolean
+	#enableDrawingLayer: boolean
+	#enableFormLayer: boolean
+	#enableAnnotationLayer: boolean
 
 	// State
 	#mode: EditorMode
@@ -116,11 +130,31 @@ export class PdfEditor implements EditorInterface {
 		this.#container.style.position = 'relative'
 		this.#container.style.overflow = 'hidden'
 
+		// Store layer enable flags
+		this.#enableTextLayer = options.enableTextLayer ?? true
+		this.#enableDrawingLayer = options.enableDrawingLayer ?? true
+		this.#enableFormLayer = options.enableFormLayer ?? true
+		this.#enableAnnotationLayer = options.enableAnnotationLayer ?? true
+
 		// Initialize core components
 		this.#document = options.document
 		this.#documentFactory = options.documentFactory
 		this.#fileManager = new FileManager()
 		this.#canvasLayer = new CanvasLayer(this.#container)
+
+		// Initialize optional layers (in z-order: text, drawing, form, annotation)
+		if (this.#enableTextLayer) {
+			this.#textLayer = new TextLayer(this.#container)
+		}
+		if (this.#enableDrawingLayer) {
+			this.#drawingLayer = new DrawingLayer(this.#container)
+		}
+		if (this.#enableFormLayer) {
+			this.#formLayer = new FormLayer(this.#container)
+		}
+		if (this.#enableAnnotationLayer) {
+			this.#annotationLayer = new AnnotationLayer(this.#container)
+		}
 
 		// Set initial state
 		this.#mode = options.initialMode ?? 'pan'
@@ -209,6 +243,7 @@ export class PdfEditor implements EditorInterface {
 		if (this.#mode === mode) return
 
 		this.#mode = mode
+		this.#updateLayersForMode(mode)
 		this.#notifyModeChange(mode)
 	}
 
@@ -285,6 +320,18 @@ export class PdfEditor implements EditorInterface {
 		this.#currentPage = 1
 		this.#hasUnsavedChanges = false
 
+		// Set document on all layers
+		const doc = this.#document
+		if (doc) {
+			this.#textLayer?.setDocument(doc)
+			this.#drawingLayer?.setDocument(doc)
+			this.#formLayer?.setDocument(doc)
+			this.#annotationLayer?.setDocument(doc)
+		}
+
+		// Set initial mode to activate correct layers
+		this.#updateLayersForMode(this.#mode)
+
 		// Render first page
 		this.renderPage(1)
 
@@ -293,6 +340,34 @@ export class PdfEditor implements EditorInterface {
 		const pageCount = this.#document?.getPageCount() ?? 0
 		this.#notifyLoad(fileName, pageCount)
 		this.#notifyPageChange(1)
+	}
+
+	#updateLayersForMode(mode: EditorMode): void {
+		// Deactivate all interactive layers first
+		this.#textLayer?.deactivate()
+		this.#drawingLayer?.deactivate()
+		this.#formLayer?.deactivate()
+		this.#annotationLayer?.deactivate()
+
+		// Activate the layer corresponding to the mode
+		switch (mode) {
+			case 'text':
+				this.#textLayer?.activate()
+				break
+			case 'draw':
+				this.#drawingLayer?.activate()
+				break
+			case 'form':
+				this.#formLayer?.activate()
+				break
+			case 'annotate':
+				this.#annotationLayer?.activate()
+				break
+			case 'pan':
+			default:
+				// All layers deactivated for pan mode
+				break
+		}
 	}
 
 	// =========================================================================
@@ -304,7 +379,13 @@ export class PdfEditor implements EditorInterface {
 		if (!doc?.isLoaded()) return
 
 		const clampedPage = clampPageNumber(pageNumber, doc.getPageCount())
+
+		// Render all layers
 		this.#canvasLayer.render(clampedPage, this.#zoom)
+		this.#textLayer?.render(clampedPage, this.#zoom)
+		this.#drawingLayer?.render(clampedPage, this.#zoom)
+		this.#formLayer?.render(clampedPage, this.#zoom)
+		this.#annotationLayer?.render(clampedPage, this.#zoom)
 	}
 
 	getPageDimensions(pageNumber: number): PageDimensions {
@@ -488,23 +569,19 @@ export class PdfEditor implements EditorInterface {
 	// =========================================================================
 
 	getTextLayer(): TextLayerInterface | undefined {
-		// TODO: Implement in Phase 4
-		return undefined
+		return this.#textLayer
 	}
 
 	getDrawingLayer(): DrawingLayerInterface | undefined {
-		// TODO: Implement in Phase 5
-		return undefined
+		return this.#drawingLayer
 	}
 
 	getFormLayer(): FormLayerInterface | undefined {
-		// TODO: Implement in Phase 6
-		return undefined
+		return this.#formLayer
 	}
 
 	getAnnotationLayer(): AnnotationLayerInterface | undefined {
-		// TODO: Implement in Phase 6
-		return undefined
+		return this.#annotationLayer
 	}
 
 	// =========================================================================
@@ -623,7 +700,14 @@ export class PdfEditor implements EditorInterface {
 
 	destroy(): void {
 		this.#resizeObserver.disconnect()
+
+		// Destroy all layers
 		this.#canvasLayer.destroy()
+		this.#textLayer?.destroy()
+		this.#drawingLayer?.destroy()
+		this.#formLayer?.destroy()
+		this.#annotationLayer?.destroy()
+
 		this.#document?.destroy()
 
 		this.#loadListeners.clear()
