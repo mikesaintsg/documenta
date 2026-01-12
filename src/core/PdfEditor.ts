@@ -399,10 +399,10 @@ export class PdfEditor implements EditorInterface {
 		// Render the canvas layer first (sets container dimensions)
 		this.#canvasLayer.render(clampedPage, this.#zoom)
 
-		// Get the rendered canvas dimensions and resize all other layers to match
+		// Get the rendered canvas dimensions from style (avoids layout reflow)
 		const canvas = this.#canvasLayer.getCanvas()
-		const width = canvas.clientWidth
-		const height = canvas.clientHeight
+		const width = parseInt(canvas.style.width) || 0
+		const height = parseInt(canvas.style.height) || 0
 
 		// Resize and render all other layers
 		if (this.#textLayer) {
