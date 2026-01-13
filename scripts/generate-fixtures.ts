@@ -45,6 +45,27 @@ function escapeText(text: string): string {
 }
 
 /**
+ * Create a page and insert it into the document
+ */
+function insertPageWithContent(
+	doc: mupdf.PDFDocument,
+	resources: mupdf.PDFObject,
+	content: string,
+	mediaBox: [number, number, number, number] = [0, 0, 612, 792],
+): void {
+	const pageDict = doc.newDictionary()
+	pageDict.put('Type', doc.newName('Page'))
+	pageDict.put('MediaBox', mediaBox)
+	pageDict.put('Resources', resources)
+
+	const contentStream = doc.addStream(content, {})
+	pageDict.put('Contents', contentStream)
+
+	const pageObj = doc.addObject(pageDict)
+	doc.insertPage(-1, pageObj)
+}
+
+/**
  * Create a simple single-page PDF with text
  */
 function createSimplePdf(): ArrayBuffer {
@@ -54,6 +75,12 @@ function createSimplePdf(): ArrayBuffer {
 	const font = new mupdf.Font('Helvetica')
 	const fontRef = doc.addSimpleFont(font)
 
+	// Create resources dict with font
+	const resources = doc.newDictionary()
+	const fonts = doc.newDictionary()
+	fonts.put('F1', fontRef)
+	resources.put('Font', fonts)
+
 	// Create content stream with text
 	const content = createTextContent('F1', [
 		{ text: 'Hello, Documenta!', x: 72, y: 720, size: 24 },
@@ -61,14 +88,8 @@ function createSimplePdf(): ArrayBuffer {
 		{ text: 'Page 1 of 1', x: 72, y: 50, size: 10 },
 	])
 
-	// Create resources dict with font
-	const resources = doc.newDictionary()
-	const fonts = doc.newDictionary()
-	fonts.put('F1', fontRef)
-	resources.put('Font', fonts)
-
-	// Add page with content
-	doc.addPage([0, 0, 612, 792], 0, resources, content)
+	// Insert page with content
+	insertPageWithContent(doc, resources, content)
 
 	const buffer = doc.saveToBuffer('').asUint8Array()
 	doc.destroy()
@@ -103,7 +124,7 @@ function createMultiPagePdf(): ArrayBuffer {
 			{ text: `Footer - Page ${pageNum}/5`, x: 72, y: 50, size: 10 },
 		])
 
-		doc.addPage([0, 0, 612, 792], 0, resources, content)
+		insertPageWithContent(doc, resources, content)
 	}
 
 	const buffer = doc.saveToBuffer('').asUint8Array()
@@ -136,7 +157,7 @@ function createFormPdf(): ArrayBuffer {
 		{ text: 'Comments:', x: 72, y: 580, size: 12 },
 	])
 
-	doc.addPage([0, 0, 612, 792], 0, resources, content)
+	insertPageWithContent(doc, resources, content)
 
 	const buffer = doc.saveToBuffer('').asUint8Array()
 	doc.destroy()
@@ -171,7 +192,7 @@ function createSearchablePdf(): ArrayBuffer {
 		{ text: 'apple banana cherry apple orange apple', x: 72, y: 480, size: 10 },
 	])
 
-	doc.addPage([0, 0, 612, 792], 0, resources, content)
+	insertPageWithContent(doc, resources, content)
 
 	const buffer = doc.saveToBuffer('').asUint8Array()
 	doc.destroy()
@@ -187,8 +208,12 @@ function createSearchablePdf(): ArrayBuffer {
 function createBlankPdf(): ArrayBuffer {
 	const doc = new mupdf.PDFDocument()
 
-	// Create blank page with no content
-	doc.addPage([0, 0, 612, 792], 0, {}, '')
+	// Create blank page with no content using insertPage
+	const pageDict = doc.newDictionary()
+	pageDict.put('Type', doc.newName('Page'))
+	pageDict.put('MediaBox', [0, 0, 612, 792])
+	const pageObj = doc.addObject(pageDict)
+	doc.insertPage(-1, pageObj)
 
 	const buffer = doc.saveToBuffer('').asUint8Array()
 	doc.destroy()

@@ -38,8 +38,8 @@ interface PointerData {
  * GestureRecognizer - Detects touch and mouse gestures
  *
  * @remarks
- * - Pinch-to-zoom is always enabled regardless of mode
- * - Two-finger pan is always enabled
+ * - Touch events: pinch-to-zoom, two-finger pan, single-finger pan, taps
+ * - Mouse events: click-and-drag pan (when mouse support is enabled)
  * - Single-finger behavior depends on mode (handled by layers)
  */
 export class GestureRecognizer implements GestureRecognizerInterface {
@@ -55,6 +55,9 @@ export class GestureRecognizer implements GestureRecognizerInterface {
 	#isPinching = false
 	#initialPinchDistance = 0
 
+	// Mouse support - when enabled, mouse clicks also trigger pan gestures
+	#enableMousePan = false
+
 	// Bound event handlers
 	#onPointerDown: (e: PointerEvent) => void
 	#onPointerMove: (e: PointerEvent) => void
@@ -66,6 +69,21 @@ export class GestureRecognizer implements GestureRecognizerInterface {
 		this.#onPointerMove = this.#handlePointerMove.bind(this)
 		this.#onPointerUp = this.#handlePointerUp.bind(this)
 		this.#onPointerCancel = this.#handlePointerCancel.bind(this)
+	}
+
+	/**
+	 * Enable or disable mouse pan support
+	 * When enabled, mouse click-and-drag will emit pan events
+	 */
+	setMousePanEnabled(enabled: boolean): void {
+		this.#enableMousePan = enabled
+	}
+
+	/**
+	 * Check if mouse pan is enabled
+	 */
+	isMousePanEnabled(): boolean {
+		return this.#enableMousePan
 	}
 
 	attach(element: HTMLElement): void {
@@ -103,6 +121,10 @@ export class GestureRecognizer implements GestureRecognizerInterface {
 	}
 
 	#handlePointerDown(e: PointerEvent): void {
+		// Handle touch events always
+		// Handle mouse events only if mouse pan is enabled
+		if (e.pointerType === 'mouse' && !this.#enableMousePan) return
+
 		// Track pointer
 		const data: PointerData = {
 			id: e.pointerId,
@@ -133,6 +155,10 @@ export class GestureRecognizer implements GestureRecognizerInterface {
 	}
 
 	#handlePointerMove(e: PointerEvent): void {
+		// Handle touch events always
+		// Handle mouse events only if mouse pan is enabled
+		if (e.pointerType === 'mouse' && !this.#enableMousePan) return
+
 		const data = this.#pointers.get(e.pointerId)
 		if (!data) return
 
@@ -172,6 +198,10 @@ export class GestureRecognizer implements GestureRecognizerInterface {
 	}
 
 	#handlePointerUp(e: PointerEvent): void {
+		// Handle touch events always
+		// Handle mouse events only if mouse pan is enabled
+		if (e.pointerType === 'mouse' && !this.#enableMousePan) return
+
 		const data = this.#pointers.get(e.pointerId)
 		if (!data) return
 
@@ -265,6 +295,10 @@ export class GestureRecognizer implements GestureRecognizerInterface {
 	}
 
 	#handlePointerCancel(e: PointerEvent): void {
+		// Handle touch events always
+		// Handle mouse events only if mouse pan is enabled
+		if (e.pointerType === 'mouse' && !this.#enableMousePan) return
+
 		this.#pointers.delete(e.pointerId)
 		this.#cancelLongPress()
 

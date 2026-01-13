@@ -2,19 +2,26 @@
  * Form Layer Integration Tests
  *
  * Tests form field interactions simulating real user scenarios.
+ * Uses real mupdf library - no mocks.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest'
 import { FormLayer } from '~/src/core/form/FormLayer.js'
-import { createMockElement, createMockPdfDocument } from '../setup.js'
-import type { AnyFormField } from '~/src/types.js'
+import { createTestElement, createLoadedPdfDocument, PDF_FIXTURES } from '../setup.js'
+import type { AnyFormField, PdfDocumentInterface } from '~/src/types.js'
 
 describe('FormLayer Integration', () => {
 	let container: HTMLElement
 	let formLayer: FormLayer
+	let pdfDocument: PdfDocumentInterface
+
+	beforeAll(async() => {
+		// Pre-load document for tests that need it
+		pdfDocument = await createLoadedPdfDocument(PDF_FIXTURES.form)
+	})
 
 	beforeEach(() => {
-		container = createMockElement()
+		container = createTestElement()
 		container.style.width = '800px'
 		container.style.height = '600px'
 		document.body.appendChild(container)
@@ -133,13 +140,11 @@ describe('FormLayer Integration', () => {
 
 	describe('Document Integration', () => {
 		it('should accept document', () => {
-			const mockDoc = createMockPdfDocument()
-			expect(() => formLayer.setDocument(mockDoc)).not.toThrow()
+			expect(() => formLayer.setDocument(pdfDocument)).not.toThrow()
 		})
 
 		it('should update after document load', () => {
-			const mockDoc = createMockPdfDocument()
-			formLayer.setDocument(mockDoc)
+			formLayer.setDocument(pdfDocument)
 			formLayer.render(1, 1.0)
 
 			expect(formLayer.isActive()).toBe(true)

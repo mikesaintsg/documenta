@@ -2,11 +2,12 @@
  * Drawing Workflow Integration Tests
  *
  * Tests drawing layer interactions simulating real user scenarios.
+ * Uses real mupdf library - no mocks.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { DrawingLayer } from '~/src/core/drawing/DrawingLayer.js'
-import { createMockElement } from '../setup.js'
+import { createTestElement } from '../setup.js'
 import type { DrawingTool, DrawingStroke } from '~/src/types.js'
 
 describe('DrawingLayer Integration', () => {
@@ -14,7 +15,7 @@ describe('DrawingLayer Integration', () => {
 	let drawingLayer: DrawingLayer
 
 	beforeEach(() => {
-		container = createMockElement()
+		container = createTestElement()
 		container.style.width = '800px'
 		container.style.height = '600px'
 		document.body.appendChild(container)

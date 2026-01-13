@@ -217,6 +217,158 @@ export class PdfDocument implements PdfDocumentInterface {
 		return result
 	}
 
+	/**
+	 * Add a blank page to the document
+	 *
+	 * @param afterPage - Insert after this page (0 for beginning, -1 for end)
+	 * @param width - Page width in points (default: 612 = Letter)
+	 * @param height - Page height in points (default: 792 = Letter)
+	 * @returns The new page number (1-indexed)
+	 */
+	addBlankPage(afterPage = -1, width = 612, height = 792): number {
+		if (!this.#doc) {
+			throw new Error('No document loaded')
+		}
+
+		const pageCount = this.#doc.countPages()
+
+		// Convert to 0-indexed insertion position
+		let insertIndex: number
+		if (afterPage === -1 || afterPage >= pageCount) {
+			insertIndex = pageCount // Insert at end
+		} else if (afterPage <= 0) {
+			insertIndex = 0 // Insert at beginning
+		} else {
+			insertIndex = afterPage // Insert after the specified page (0-indexed)
+		}
+
+		// Use mupdf's insertPage with a blank page object
+		this.#doc.insertPage(insertIndex, this.#createBlankPageObject(width, height))
+
+		// Clear page cache since page numbers may have shifted
+		this.#clearPageCache()
+
+		// Return new page number (1-indexed)
+		return insertIndex + 1
+	}
+
+	/**
+	 * Create a blank page object for insertion
+	 */
+	#createBlankPageObject(width: number, height: number): mupdf.PDFObject {
+		const doc = this.#doc!
+		const pageDict = doc.newDictionary()
+		const mediaBox = doc.newArray()
+
+		// MediaBox: [0, 0, width, height]
+		mediaBox.push(doc.newInteger(0))
+		mediaBox.push(doc.newInteger(0))
+		mediaBox.push(doc.newReal(width))
+		mediaBox.push(doc.newReal(height))
+
+		pageDict.put('Type', doc.newName('Page'))
+		pageDict.put('MediaBox', mediaBox)
+
+		// Empty resources and contents
+		pageDict.put('Resources', doc.newDictionary())
+		pageDict.put('Contents', doc.addStream('', {}))
+
+		return doc.addObject(pageDict)
+	}
+
+	/**
+	 * Delete a page from the document
+	 *
+	 * @param pageNumber - Page to delete (1-indexed)
+	 */
+	deletePage(pageNumber: number): void {
+		if (!this.#doc) {
+			throw new Error('No document loaded')
+		}
+
+		const pageCount = this.#doc.countPages()
+		if (pageNumber < 1 || pageNumber > pageCount) {
+			throw new Error(`Invalid page number: ${pageNumber}. Document has ${pageCount} pages.`)
+		}
+
+		if (pageCount === 1) {
+			throw new Error('Cannot delete the only page in the document')
+		}
+
+		// Delete page (mupdf uses 0-indexed)
+		this.#doc.deletePage(pageNumber - 1)
+
+		// Clear page cache since page numbers have shifted
+		this.#clearPageCache()
+	}
+
+	/**
+	 * Rotate a page
+	 *
+	 * @param pageNumber - Page to rotate (1-indexed)
+	 * @param rotation - New rotation (0, 90, 180, or 270)
+	 */
+	rotatePage(pageNumber: number, rotation: PageRotation): void {
+		if (!this.#doc) {
+			throw new Error('No document loaded')
+		}
+
+		const pageCount = this.#doc.countPages()
+		if (pageNumber < 1 || pageNumber > pageCount) {
+			throw new Error(`Invalid page number: ${pageNumber}. Document has ${pageCount} pages.`)
+		}
+
+		// Validate rotation
+		if (![0, 90, 180, 270].includes(rotation)) {
+			throw new Error(`Invalid rotation: ${rotation}. Must be 0, 90, 180, or 270.`)
+		}
+
+		// Get the page object and set rotation
+		const page = this.#doc.loadPage(pageNumber - 1)
+		const pageObj = page.getObject()
+		pageObj.put('Rotate', this.#doc.newInteger(rotation))
+
+		// Clear page cache since rotation affects dimensions
+		this.#clearPageCache()
+	}
+
+	/**
+	 * Move a page to a new position
+	 *
+	 * @param fromPage - Source page (1-indexed)
+	 * @param toPage - Destination position (1-indexed)
+	 */
+	movePage(fromPage: number, toPage: number): void {
+		if (!this.#doc) {
+			throw new Error('No document loaded')
+		}
+
+		const pageCount = this.#doc.countPages()
+		if (fromPage < 1 || fromPage > pageCount) {
+			throw new Error(`Invalid source page: ${fromPage}. Document has ${pageCount} pages.`)
+		}
+		if (toPage < 1 || toPage > pageCount) {
+			throw new Error(`Invalid destination page: ${toPage}. Document has ${pageCount} pages.`)
+		}
+
+		if (fromPage === toPage) {
+			return // No-op
+		}
+
+		// mupdf doesn't have a direct movePage, so we need to rearrange the page tree
+		// This is complex in mupdf, so we'll use a workaround with insertPage/deletePage
+		// Note: This is a simplified implementation that may not preserve all page properties
+
+		// For now, throw not implemented as mupdf's page tree manipulation is complex
+		// A full implementation would need to:
+		// 1. Get the page object at fromPage
+		// 2. Insert a reference to it at toPage
+		// 3. Delete the original reference
+		// This requires careful handling of the page tree structure
+
+		throw new Error('movePage is not yet implemented - requires complex page tree manipulation')
+	}
+
 	destroy(): void {
 		if (this.#destroyed) return
 		this.#destroyed = true

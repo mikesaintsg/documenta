@@ -2,19 +2,26 @@
  * Text Selection Workflow Integration Tests
  *
  * Tests text layer interactions simulating real user scenarios.
+ * Uses real mupdf library - no mocks.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest'
 import { TextLayer } from '~/src/core/text/TextLayer.js'
-import { createMockElement, createMockPdfDocument } from '../setup.js'
-import type { TextSelection } from '~/src/types.js'
+import { createTestElement, PDF_FIXTURES, createLoadedPdfDocument } from '../setup.js'
+import type { TextSelection, PdfDocumentInterface } from '~/src/types.js'
 
 describe('TextLayer Integration', () => {
 	let container: HTMLElement
 	let textLayer: TextLayer
+	let pdfDocument: PdfDocumentInterface
+
+	beforeAll(async() => {
+		// Pre-load document for tests that need it
+		pdfDocument = await createLoadedPdfDocument(PDF_FIXTURES.searchable)
+	})
 
 	beforeEach(() => {
-		container = createMockElement()
+		container = createTestElement()
 		container.style.width = '800px'
 		container.style.height = '600px'
 		document.body.appendChild(container)
@@ -42,8 +49,7 @@ describe('TextLayer Integration', () => {
 		})
 
 		it('should set document for text extraction', () => {
-			const mockDoc = createMockPdfDocument()
-			expect(() => textLayer.setDocument(mockDoc)).not.toThrow()
+			expect(() => textLayer.setDocument(pdfDocument)).not.toThrow()
 		})
 	})
 
@@ -88,8 +94,7 @@ describe('TextLayer Integration', () => {
 		})
 
 		it('should return empty array when searching empty query', () => {
-			const mockDoc = createMockPdfDocument()
-			textLayer.setDocument(mockDoc)
+			textLayer.setDocument(pdfDocument)
 
 			const matches = textLayer.search('')
 			expect(matches.length).toBe(0)
@@ -101,8 +106,7 @@ describe('TextLayer Integration', () => {
 		})
 
 		it('should perform case-insensitive search', () => {
-			const mockDoc = createMockPdfDocument()
-			textLayer.setDocument(mockDoc)
+			textLayer.setDocument(pdfDocument)
 
 			// Both should work the same way
 			const upper = textLayer.search('TEST')
@@ -188,8 +192,7 @@ describe('TextLayer Integration', () => {
 
 	describe('Overlay Rendering', () => {
 		it('should render text overlay on page change', () => {
-			const mockDoc = createMockPdfDocument()
-			textLayer.setDocument(mockDoc)
+			textLayer.setDocument(pdfDocument)
 			textLayer.render(1, 1.0)
 
 			// Layer should be rendered without errors
@@ -197,8 +200,7 @@ describe('TextLayer Integration', () => {
 		})
 
 		it('should handle different scales', () => {
-			const mockDoc = createMockPdfDocument()
-			textLayer.setDocument(mockDoc)
+			textLayer.setDocument(pdfDocument)
 
 			textLayer.render(1, 0.5)
 			textLayer.render(1, 1.0)

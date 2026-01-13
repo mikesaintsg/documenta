@@ -62,7 +62,7 @@ import {
 	throttle,
 } from '~/src/helpers.js'
 import type { Point, Quad } from '~/src/types.js'
-import { createMockFile, createMockArrayBuffer, createMockCanvas, delay } from './setup.js'
+import { createFileWithContent, createTestArrayBuffer, createTestCanvas, delay } from './setup.js'
 
 describe('helpers', () => {
 	describe('clamp', () => {
@@ -153,29 +153,29 @@ describe('helpers', () => {
 
 	describe('isValidPdfFile', () => {
 		it('returns true for PDF file with correct MIME type', () => {
-			const pdf = createMockFile('test.pdf', '', 'application/pdf')
+			const pdf = createFileWithContent('test.pdf', '', 'application/pdf')
 			expect(isValidPdfFile(pdf)).toBe(true)
 		})
 
 		it('returns true for PDF file with x-pdf MIME type', () => {
-			const pdf = createMockFile('test.pdf', '', 'application/x-pdf')
+			const pdf = createFileWithContent('test.pdf', '', 'application/x-pdf')
 			expect(isValidPdfFile(pdf)).toBe(true)
 		})
 
 		it('returns true for PDF file with .pdf extension even without MIME type', () => {
-			const pdf = createMockFile('test.pdf', '', '')
+			const pdf = createFileWithContent('test.pdf', '', '')
 			expect(isValidPdfFile(pdf)).toBe(true)
 		})
 
 		it('returns false for non-PDF file', () => {
-			const txt = createMockFile('test.txt', '', 'text/plain')
+			const txt = createFileWithContent('test.txt', '', 'text/plain')
 			expect(isValidPdfFile(txt)).toBe(false)
 		})
 	})
 
 	describe('isNonEmptyArrayBuffer', () => {
 		it('returns true for non-empty buffer', () => {
-			const buffer = createMockArrayBuffer(10)
+			const buffer = createTestArrayBuffer(10)
 			expect(isNonEmptyArrayBuffer(buffer)).toBe(true)
 		})
 
@@ -639,7 +639,7 @@ describe('helpers', () => {
 
 	describe('configureCanvasForHighDpi', () => {
 		it('configures canvas dimensions', () => {
-			const canvas = createMockCanvas()
+			const canvas = createTestCanvas()
 			configureCanvasForHighDpi(canvas, 200, 150)
 			expect(canvas.style.width).toBe('200px')
 			expect(canvas.style.height).toBe('150px')
@@ -698,7 +698,7 @@ describe('helpers', () => {
 		it('does not throw with valid arguments', () => {
 			// The downloadBlob function creates a link, clicks it and removes it
 			// In test environment, this is a no-op but should not throw
-			const buffer = createMockArrayBuffer(10)
+			const buffer = createTestArrayBuffer(10)
 			// We can't fully test download behavior but can verify no errors
 			expect(() => downloadBlob(buffer, 'test.pdf', 'application/pdf')).not.toThrow()
 		})

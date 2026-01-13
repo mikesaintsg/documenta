@@ -46,6 +46,12 @@ import {
 } from '../helpers.js'
 import { FileManager } from './file/FileManager.js'
 import { CanvasLayer } from './layers/CanvasLayer.js'
+import { DrawingLayer } from './drawing/DrawingLayer.js'
+import { TextLayer } from './text/TextLayer.js'
+import { FormLayer } from './form/FormLayer.js'
+import { AnnotationLayer } from './annotation/AnnotationLayer.js'
+import { GestureRecognizer } from './input/GestureRecognizer.js'
+import type { GestureEvent, Unsubscribe as GestureUnsubscribe } from '../types.js'
 
 // Dynamic import for PdfDocument to avoid WASM loading at import time
 let PdfDocumentClass: (new () => PdfDocumentInterface) | undefined
@@ -86,6 +92,25 @@ export class PdfEditor implements EditorInterface {
 	#documentFactory: (() => PdfDocumentInterface) | undefined
 	#fileManager: FileManager
 	#canvasLayer: CanvasLayer
+	#textLayer: TextLayer | undefined
+	#drawingLayer: DrawingLayer | undefined
+	#formLayer: FormLayer | undefined
+	#annotationLayer: AnnotationLayer | undefined
+	#gestureRecognizer: GestureRecognizer
+	#gestureUnsubscribe: GestureUnsubscribe | undefined
+
+	// Pan/pinch gesture state
+	#isPanActive = false
+	#panStartScrollLeft = 0
+	#panStartScrollTop = 0
+	#isPinchActive = false
+	#pinchStartZoom = 1
+
+	// Layer enable flags
+	#enableTextLayer: boolean
+	#enableDrawingLayer: boolean
+	#enableFormLayer: boolean
+	#enableAnnotationLayer: boolean
 
 	// State
 	#mode: EditorMode
@@ -116,11 +141,31 @@ export class PdfEditor implements EditorInterface {
 		this.#container.style.position = 'relative'
 		this.#container.style.overflow = 'hidden'
 
+		// Store layer enable flags
+		this.#enableTextLayer = options.enableTextLayer ?? true
+		this.#enableDrawingLayer = options.enableDrawingLayer ?? true
+		this.#enableFormLayer = options.enableFormLayer ?? true
+		this.#enableAnnotationLayer = options.enableAnnotationLayer ?? true
+
 		// Initialize core components
 		this.#document = options.document
 		this.#documentFactory = options.documentFactory
 		this.#fileManager = new FileManager()
 		this.#canvasLayer = new CanvasLayer(this.#container)
+
+		// Initialize optional layers (in z-order: text, drawing, form, annotation)
+		if (this.#enableTextLayer) {
+			this.#textLayer = new TextLayer(this.#container)
+		}
+		if (this.#enableDrawingLayer) {
+			this.#drawingLayer = new DrawingLayer(this.#container)
+		}
+		if (this.#enableFormLayer) {
+			this.#formLayer = new FormLayer(this.#container)
+		}
+		if (this.#enableAnnotationLayer) {
+			this.#annotationLayer = new AnnotationLayer(this.#container)
+		}
 
 		// Set initial state
 		this.#mode = options.initialMode ?? 'pan'
@@ -155,6 +200,16 @@ export class PdfEditor implements EditorInterface {
 			this.#debouncedResize()
 		})
 		this.#resizeObserver.observe(this.#container)
+
+		// Set up gesture recognition for pan mode
+		this.#gestureRecognizer = new GestureRecognizer()
+		this.#gestureRecognizer.attach(this.#container)
+		this.#gestureUnsubscribe = this.#gestureRecognizer.onGesture(this.#handleGesture.bind(this))
+
+		// Enable mouse pan if initial mode is pan (for desktop support)
+		if (this.#mode === 'pan') {
+			this.#gestureRecognizer.setMousePanEnabled(true)
+		}
 	}
 
 	// =========================================================================
@@ -209,6 +264,11 @@ export class PdfEditor implements EditorInterface {
 		if (this.#mode === mode) return
 
 		this.#mode = mode
+		this.#updateLayersForMode(mode)
+
+		// Enable mouse pan in pan mode for desktop support
+		this.#gestureRecognizer.setMousePanEnabled(mode === 'pan')
+
 		this.#notifyModeChange(mode)
 	}
 
@@ -285,6 +345,18 @@ export class PdfEditor implements EditorInterface {
 		this.#currentPage = 1
 		this.#hasUnsavedChanges = false
 
+		// Set document on all layers
+		const doc = this.#document
+		if (doc) {
+			this.#textLayer?.setDocument(doc)
+			this.#drawingLayer?.setDocument(doc)
+			this.#formLayer?.setDocument(doc)
+			this.#annotationLayer?.setDocument(doc)
+		}
+
+		// Set initial mode to activate correct layers
+		this.#updateLayersForMode(this.#mode)
+
 		// Render first page
 		this.renderPage(1)
 
@@ -293,6 +365,34 @@ export class PdfEditor implements EditorInterface {
 		const pageCount = this.#document?.getPageCount() ?? 0
 		this.#notifyLoad(fileName, pageCount)
 		this.#notifyPageChange(1)
+	}
+
+	#updateLayersForMode(mode: EditorMode): void {
+		// Deactivate all interactive layers first
+		this.#textLayer?.deactivate()
+		this.#drawingLayer?.deactivate()
+		this.#formLayer?.deactivate()
+		this.#annotationLayer?.deactivate()
+
+		// Activate the layer corresponding to the mode
+		switch (mode) {
+			case 'text':
+				this.#textLayer?.activate()
+				break
+			case 'draw':
+				this.#drawingLayer?.activate()
+				break
+			case 'form':
+				this.#formLayer?.activate()
+				break
+			case 'annotate':
+				this.#annotationLayer?.activate()
+				break
+			case 'pan':
+			default:
+				// All layers deactivated for pan mode
+				break
+		}
 	}
 
 	// =========================================================================
@@ -304,7 +404,32 @@ export class PdfEditor implements EditorInterface {
 		if (!doc?.isLoaded()) return
 
 		const clampedPage = clampPageNumber(pageNumber, doc.getPageCount())
+
+		// Render the canvas layer first (sets container dimensions)
 		this.#canvasLayer.render(clampedPage, this.#zoom)
+
+		// Get the rendered canvas dimensions from style (avoids layout reflow)
+		const canvas = this.#canvasLayer.getCanvas()
+		const width = parseInt(canvas.style.width) || 0
+		const height = parseInt(canvas.style.height) || 0
+
+		// Resize and render all other layers
+		if (this.#textLayer) {
+			this.#textLayer.resize(width, height)
+			this.#textLayer.render(clampedPage, this.#zoom)
+		}
+		if (this.#drawingLayer) {
+			this.#drawingLayer.resize(width, height)
+			this.#drawingLayer.render(clampedPage, this.#zoom)
+		}
+		if (this.#formLayer) {
+			this.#formLayer.resize(width, height)
+			this.#formLayer.render(clampedPage, this.#zoom)
+		}
+		if (this.#annotationLayer) {
+			this.#annotationLayer.resize(width, height)
+			this.#annotationLayer.render(clampedPage, this.#zoom)
+		}
 	}
 
 	getPageDimensions(pageNumber: number): PageDimensions {
@@ -387,19 +512,77 @@ export class PdfEditor implements EditorInterface {
 	// Page Management
 	// =========================================================================
 
-	addBlankPage(_afterPage?: number, _width?: number, _height?: number): number {
-		// TODO: Implement in Phase 6
-		throw new Error('Not implemented')
+	addBlankPage(afterPage?: number, width?: number, height?: number): number {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
+			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
+		}
+
+		// Call PdfDocument's addBlankPage implementation
+		const newPageNumber = doc.addBlankPage(afterPage, width, height)
+
+		// Mark as having unsaved changes
+		this.#hasUnsavedChanges = true
+
+		// Notify listeners about page count change
+		const pageCount = this.getPageCount()
+		for (const listener of this.#loadListeners) {
+			listener(this.getFileName() ?? 'document.pdf', pageCount)
+		}
+
+		// Navigate to the new page
+		this.goToPage(newPageNumber)
+
+		return newPageNumber
 	}
 
-	deletePage(_pageNumber: number): void {
-		// TODO: Implement in Phase 6
-		throw new Error('Not implemented')
+	deletePage(pageNumber: number): void {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
+			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
+		}
+
+		// Call PdfDocument's deletePage implementation
+		doc.deletePage(pageNumber)
+
+		// Mark as having unsaved changes
+		this.#hasUnsavedChanges = true
+
+		// Adjust current page if needed
+		const newPageCount = this.getPageCount()
+		if (this.#currentPage > newPageCount) {
+			this.#currentPage = newPageCount
+		} else if (this.#currentPage === pageNumber && this.#currentPage > 1) {
+			// Stay on same visual position, which is now the previous page number
+			this.#currentPage = Math.max(1, pageNumber - 1)
+		}
+
+		// Re-render and notify
+		this.renderPage(this.#currentPage)
+		this.#notifyPageChange(this.#currentPage)
+
+		// Notify listeners about page count change
+		for (const listener of this.#loadListeners) {
+			listener(this.getFileName() ?? 'document.pdf', newPageCount)
+		}
 	}
 
-	rotatePage(_pageNumber: number, _rotation: PageRotation): void {
-		// TODO: Implement in Phase 6
-		throw new Error('Not implemented')
+	rotatePage(pageNumber: number, rotation: PageRotation): void {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
+			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
+		}
+
+		// Call PdfDocument's rotatePage implementation
+		doc.rotatePage(pageNumber, rotation)
+
+		// Mark as having unsaved changes
+		this.#hasUnsavedChanges = true
+
+		// Re-render if current page was rotated
+		if (pageNumber === this.#currentPage) {
+			this.renderPage(this.#currentPage)
+		}
 	}
 
 	getPageRotation(pageNumber: number): PageRotation {
@@ -408,9 +591,30 @@ export class PdfEditor implements EditorInterface {
 		return doc.getPageRotation(pageNumber)
 	}
 
-	movePage(_fromPage: number, _toPage: number): void {
-		// TODO: Implement in Phase 6
-		throw new Error('Not implemented')
+	movePage(fromPage: number, toPage: number): void {
+		const doc = this.#document
+		if (!doc?.isLoaded()) {
+			throw new Error(ERROR_MESSAGES.NO_DOCUMENT)
+		}
+
+		// Call PdfDocument's movePage implementation
+		doc.movePage(fromPage, toPage)
+
+		// Mark as having unsaved changes
+		this.#hasUnsavedChanges = true
+
+		// Adjust current page based on the move
+		if (this.#currentPage === fromPage) {
+			this.#currentPage = toPage
+		} else if (fromPage < this.#currentPage && toPage >= this.#currentPage) {
+			this.#currentPage--
+		} else if (fromPage > this.#currentPage && toPage <= this.#currentPage) {
+			this.#currentPage++
+		}
+
+		// Re-render and notify
+		this.renderPage(this.#currentPage)
+		this.#notifyPageChange(this.#currentPage)
 	}
 
 	// =========================================================================
@@ -488,23 +692,19 @@ export class PdfEditor implements EditorInterface {
 	// =========================================================================
 
 	getTextLayer(): TextLayerInterface | undefined {
-		// TODO: Implement in Phase 4
-		return undefined
+		return this.#textLayer
 	}
 
 	getDrawingLayer(): DrawingLayerInterface | undefined {
-		// TODO: Implement in Phase 5
-		return undefined
+		return this.#drawingLayer
 	}
 
 	getFormLayer(): FormLayerInterface | undefined {
-		// TODO: Implement in Phase 6
-		return undefined
+		return this.#formLayer
 	}
 
 	getAnnotationLayer(): AnnotationLayerInterface | undefined {
-		// TODO: Implement in Phase 6
-		return undefined
+		return this.#annotationLayer
 	}
 
 	// =========================================================================
@@ -612,8 +812,101 @@ export class PdfEditor implements EditorInterface {
 
 	#handleResize(): void {
 		if (this.#document?.isLoaded() && this.#currentPage > 0) {
-			const { width, height } = this.#container.getBoundingClientRect()
-			this.#canvasLayer.resize(width, height)
+			// Re-render page (which will resize all layers)
+			this.renderPage(this.#currentPage)
+		}
+	}
+
+	#handleGesture(event: GestureEvent): void {
+		// Only handle gestures in pan mode
+		if (this.#mode !== 'pan') return
+		if (!this.#document?.isLoaded()) return
+
+		switch (event.type) {
+			case 'pan':
+				this.#handlePanGesture(event)
+				break
+			case 'twofingerpan':
+				this.#handleTwoFingerPan(event)
+				break
+			case 'pinch':
+				this.#handlePinchGesture(event)
+				break
+			case 'doubletap':
+				this.#handleDoubleTap(event)
+				break
+			case 'tap':
+				// Single tap - no action in pan mode
+				break
+			case 'longpress':
+				// Long press - could be used for context menu in future
+				break
+		}
+	}
+
+	#handlePanGesture(event: GestureEvent): void {
+		// Pan (scroll) the viewer container
+		const parent = this.#container.parentElement
+		if (!parent) return
+
+		if (!event.isFinal && event.deltaX !== undefined && event.deltaY !== undefined) {
+			// Start of pan - store initial scroll position
+			if (!this.#isPanActive) {
+				this.#isPanActive = true
+				this.#panStartScrollLeft = parent.scrollLeft
+				this.#panStartScrollTop = parent.scrollTop
+			}
+
+			// Apply delta to scroll position
+			parent.scrollLeft = this.#panStartScrollLeft - event.deltaX
+			parent.scrollTop = this.#panStartScrollTop - event.deltaY
+		}
+
+		if (event.isFinal) {
+			// Reset pan state
+			this.#isPanActive = false
+			this.#panStartScrollLeft = 0
+			this.#panStartScrollTop = 0
+		}
+	}
+
+	#handleTwoFingerPan(event: GestureEvent): void {
+		// Two-finger pan works same as single-finger pan
+		this.#handlePanGesture(event)
+	}
+
+	#handlePinchGesture(event: GestureEvent): void {
+		if (event.scale === undefined) return
+
+		if (!event.isFinal) {
+			// Start of pinch - store initial zoom
+			if (!this.#isPinchActive) {
+				this.#isPinchActive = true
+				this.#pinchStartZoom = this.#zoom
+			}
+
+			// Apply scale to zoom
+			const newZoom = clampZoom(this.#pinchStartZoom * event.scale, MIN_ZOOM, MAX_ZOOM)
+			if (newZoom !== this.#zoom) {
+				this.#zoom = newZoom
+				this.renderPage(this.#currentPage)
+				this.#notifyZoomChange(newZoom)
+			}
+		}
+
+		if (event.isFinal) {
+			// Reset pinch state
+			this.#isPinchActive = false
+			this.#pinchStartZoom = this.#zoom
+		}
+	}
+
+	#handleDoubleTap(_event: GestureEvent): void {
+		// Double-tap to toggle between 100% and fit-to-width
+		if (this.#zoom === DEFAULT_ZOOM) {
+			this.fitToWidth()
+		} else {
+			this.resetZoom()
 		}
 	}
 
@@ -623,7 +916,16 @@ export class PdfEditor implements EditorInterface {
 
 	destroy(): void {
 		this.#resizeObserver.disconnect()
+		this.#gestureUnsubscribe?.()
+		this.#gestureRecognizer.destroy()
+
+		// Destroy all layers
 		this.#canvasLayer.destroy()
+		this.#textLayer?.destroy()
+		this.#drawingLayer?.destroy()
+		this.#formLayer?.destroy()
+		this.#annotationLayer?.destroy()
+
 		this.#document?.destroy()
 
 		this.#loadListeners.clear()

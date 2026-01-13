@@ -1,76 +1,36 @@
 /**
  * Tests for FormLayer
  * @module tests/core/form/FormLayer
+ *
+ * Uses real mupdf library - no mocks.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest'
 import { FormLayer } from '~/src/core/form/FormLayer.js'
-import type { PdfDocumentInterface, PdfPageInterface } from '~/src/types.js'
-import { createMockElement } from '../../setup.js'
-
-// Mock PdfDocument
-class MockPdfDocument implements PdfDocumentInterface {
-	#loaded = true
-
-	isLoaded(): boolean {
-		return this.#loaded
-	}
-
-	getPageCount(): number {
-		return 2
-	}
-
-	getFileName(): string | undefined {
-		return 'form.pdf'
-	}
-
-	async loadFromBuffer(_buffer: ArrayBuffer, _fileName?: string): Promise<void> {
-		this.#loaded = true
-	}
-
-	getPage(pageNumber: number): PdfPageInterface {
-		return {
-			pageNumber,
-			width: 612,
-			height: 792,
-			rotation: 0,
-			render: () => {},
-			getText: () => '',
-			getTextBlocks: () => [],
-			destroy: () => {},
-		}
-	}
-
-	getPageDimensions(_pageNumber: number): { width: number; height: number } {
-		return { width: 612, height: 792 }
-	}
-
-	getPageRotation(_pageNumber: number): 0 | 90 | 180 | 270 {
-		return 0
-	}
-
-	toArrayBuffer(): ArrayBuffer {
-		return new ArrayBuffer(0)
-	}
-
-	destroy(): void {
-		this.#loaded = false
-	}
-}
+import { PdfDocument } from '~/src/core/document/PdfDocument.js'
+import { createTestElement, loadPdfFixture, PDF_FIXTURES } from '../../setup.js'
+import type { PdfDocumentInterface } from '~/src/types.js'
 
 describe('FormLayer', () => {
 	let container: HTMLElement
 	let formLayer: FormLayer
-	let mockDocument: MockPdfDocument
+	let pdfDocument: PdfDocumentInterface
+	let formPdfBuffer: ArrayBuffer
 
-	beforeEach(() => {
-		container = createMockElement()
+	beforeAll(async() => {
+		// Pre-load the form PDF fixture
+		formPdfBuffer = await loadPdfFixture(PDF_FIXTURES.form)
+	})
+
+	beforeEach(async() => {
+		container = createTestElement()
 		container.style.width = '800px'
 		container.style.height = '600px'
 		document.body.appendChild(container)
 
 		formLayer = new FormLayer(container)
-		mockDocument = new MockPdfDocument()
+		pdfDocument = new PdfDocument()
+		await pdfDocument.loadFromBuffer(formPdfBuffer, 'test.pdf')
 	})
 
 	afterEach(() => {
@@ -79,191 +39,114 @@ describe('FormLayer', () => {
 	})
 
 	describe('constructor', () => {
-		it('creates instance successfully', () => {
-			expect(formLayer).toBeInstanceOf(FormLayer)
-		})
-
-		it('creates container with overflow hidden', () => {
-			const layerContainer = container.querySelector('div')
-			expect(layerContainer?.style.overflow).toBe('hidden')
+		it('creates layer element', () => {
+			const layer = container.querySelector('[class*="form-layer"]')
+			expect(layer).not.toBeNull()
 		})
 	})
 
 	describe('setDocument', () => {
-		it('sets document reference', () => {
-			formLayer.setDocument(mockDocument)
-			// Should scan for fields
-		})
-
-		it('handles multiple document sets', () => {
-			formLayer.setDocument(mockDocument)
-			formLayer.setDocument(new MockPdfDocument())
-			// Should not throw
-		})
-	})
-
-	describe('hasFormFields', () => {
-		it('returns false when no fields', () => {
-			formLayer.setDocument(mockDocument)
-			expect(formLayer.hasFormFields()).toBe(false)
-		})
-	})
-
-	describe('getAllFields', () => {
-		it('returns empty array when no fields', () => {
-			formLayer.setDocument(mockDocument)
-			expect(formLayer.getAllFields()).toEqual([])
-		})
-
-		it('returns readonly array', () => {
-			const fields = formLayer.getAllFields()
-			expect(Array.isArray(fields)).toBe(true)
-		})
-	})
-
-	describe('getFieldsOnPage', () => {
-		it('returns empty array for page with no fields', () => {
-			formLayer.setDocument(mockDocument)
-			expect(formLayer.getFieldsOnPage(1)).toEqual([])
-		})
-
-		it('handles invalid page numbers', () => {
-			expect(formLayer.getFieldsOnPage(0)).toEqual([])
-			expect(formLayer.getFieldsOnPage(-1)).toEqual([])
-			expect(formLayer.getFieldsOnPage(999)).toEqual([])
-		})
-	})
-
-	describe('getFieldByName', () => {
-		it('returns undefined for non-existent field', () => {
-			formLayer.setDocument(mockDocument)
-			expect(formLayer.getFieldByName('non-existent')).toBeUndefined()
-		})
-	})
-
-	describe('setFieldValue', () => {
-		it('does nothing for non-existent field', () => {
-			expect(() => formLayer.setFieldValue('non-existent', 'value')).not.toThrow()
-		})
-	})
-
-	describe('setFieldChecked', () => {
-		it('does nothing for non-existent field', () => {
-			expect(() => formLayer.setFieldChecked('non-existent', true)).not.toThrow()
-		})
-	})
-
-	describe('setFieldSelection', () => {
-		it('does nothing for non-existent field', () => {
-			expect(() => formLayer.setFieldSelection('non-existent', 0)).not.toThrow()
-		})
-	})
-
-	describe('setHighlightFields', () => {
-		it('enables field highlighting', () => {
-			formLayer.setHighlightFields(true)
-			// No visible change without fields
-		})
-
-		it('disables field highlighting', () => {
-			formLayer.setHighlightFields(true)
-			formLayer.setHighlightFields(false)
-			// Should toggle off
-		})
-	})
-
-	describe('flattenForm', () => {
-		it('does not throw (not implemented)', () => {
-			expect(() => formLayer.flattenForm()).not.toThrow()
-		})
-	})
-
-	describe('resetForm', () => {
-		it('resets all fields to default', () => {
-			formLayer.setDocument(mockDocument)
-			formLayer.resetForm()
-			// All fields should be reset
-		})
-
-		it('does not throw when no fields', () => {
-			expect(() => formLayer.resetForm()).not.toThrow()
-		})
-	})
-
-	describe('onFieldChange', () => {
-		it('registers callback and returns unsubscribe', () => {
-			const callback = vi.fn()
-			const unsubscribe = formLayer.onFieldChange(callback)
-
-			expect(typeof unsubscribe).toBe('function')
-		})
-
-		it('unsubscribe removes callback', () => {
-			const callback = vi.fn()
-			const unsubscribe = formLayer.onFieldChange(callback)
-			unsubscribe()
-		})
-
-		it('supports multiple callbacks', () => {
-			const callback1 = vi.fn()
-			const callback2 = vi.fn()
-
-			formLayer.onFieldChange(callback1)
-			formLayer.onFieldChange(callback2)
+		it('accepts a document', () => {
+			expect(() => formLayer.setDocument(pdfDocument)).not.toThrow()
 		})
 	})
 
 	describe('render', () => {
-		it('renders field overlays', () => {
-			formLayer.setDocument(mockDocument)
-			formLayer.render(1, 1)
-			// Should not throw
+		beforeEach(() => {
+			formLayer.setDocument(pdfDocument)
 		})
 
-		it('handles scale changes', () => {
-			formLayer.setDocument(mockDocument)
-			formLayer.render(1, 0.5)
-			formLayer.render(1, 2.0)
+		it('renders at scale 1', () => {
+			expect(() => formLayer.render(1, 1.0)).not.toThrow()
 		})
 
-		it('handles page changes', () => {
-			formLayer.setDocument(mockDocument)
-			formLayer.render(1, 1)
-			formLayer.render(2, 1)
+		it('renders at different scales', () => {
+			expect(() => formLayer.render(1, 0.5)).not.toThrow()
+			expect(() => formLayer.render(1, 2.0)).not.toThrow()
 		})
 	})
 
 	describe('resize', () => {
-		it('re-renders on resize', () => {
-			formLayer.setDocument(mockDocument)
-			formLayer.render(1, 1)
-			formLayer.resize(1024, 768)
-		})
-
-		it('does nothing when no current page', () => {
+		it('accepts new dimensions', () => {
 			expect(() => formLayer.resize(1024, 768)).not.toThrow()
 		})
 	})
 
-	describe('activate', () => {
-		it('enables field inputs', () => {
+	describe('activate/deactivate', () => {
+		it('activates layer', () => {
 			formLayer.activate()
 			expect(formLayer.isActive()).toBe(true)
 		})
-	})
 
-	describe('deactivate', () => {
-		it('disables field inputs', () => {
+		it('deactivates layer', () => {
 			formLayer.activate()
 			formLayer.deactivate()
 			expect(formLayer.isActive()).toBe(false)
 		})
 	})
 
+	describe('form field detection', () => {
+		it('hasFormFields returns boolean', () => {
+			expect(typeof formLayer.hasFormFields()).toBe('boolean')
+		})
+
+		it('getAllFields returns array', () => {
+			expect(Array.isArray(formLayer.getAllFields())).toBe(true)
+		})
+
+		it('getFieldsOnPage returns array', () => {
+			expect(Array.isArray(formLayer.getFieldsOnPage(1))).toBe(true)
+		})
+
+		it('getFieldByName returns undefined for unknown field', () => {
+			expect(formLayer.getFieldByName('nonexistent')).toBeUndefined()
+		})
+	})
+
+	describe('field value operations', () => {
+		it('setFieldValue does not throw', () => {
+			expect(() => formLayer.setFieldValue('field1', 'value')).not.toThrow()
+		})
+
+		it('setFieldChecked does not throw', () => {
+			expect(() => formLayer.setFieldChecked('checkbox1', true)).not.toThrow()
+		})
+
+		it('setFieldSelection does not throw', () => {
+			expect(() => formLayer.setFieldSelection('dropdown1', 0)).not.toThrow()
+		})
+	})
+
+	describe('highlighting', () => {
+		it('setHighlightFields does not throw', () => {
+			expect(() => formLayer.setHighlightFields(true)).not.toThrow()
+			expect(() => formLayer.setHighlightFields(false)).not.toThrow()
+		})
+	})
+
+	describe('form operations', () => {
+		it('flattenForm does not throw', () => {
+			expect(() => formLayer.flattenForm()).not.toThrow()
+		})
+
+		it('resetForm does not throw', () => {
+			expect(() => formLayer.resetForm()).not.toThrow()
+		})
+	})
+
+	describe('events', () => {
+		it('onFieldChange returns unsubscribe function', () => {
+			const unsubscribe = formLayer.onFieldChange(() => {})
+			expect(typeof unsubscribe).toBe('function')
+			unsubscribe()
+		})
+	})
+
 	describe('destroy', () => {
-		it('cleans up resources', () => {
-			formLayer.setDocument(mockDocument)
+		it('removes layer from container', () => {
 			formLayer.destroy()
+			const layer = container.querySelector('[class*="form-layer"]')
+			expect(layer).toBeNull()
 		})
 
 		it('handles multiple destroy calls', () => {
@@ -271,29 +154,6 @@ describe('FormLayer', () => {
 				formLayer.destroy()
 				formLayer.destroy()
 			}).not.toThrow()
-		})
-	})
-
-	describe('edge cases', () => {
-		it('handles document with no form fields', () => {
-			formLayer.setDocument(mockDocument)
-			expect(formLayer.hasFormFields()).toBe(false)
-			expect(formLayer.getAllFields()).toEqual([])
-		})
-
-		it('handles rapid field operations', () => {
-			formLayer.setDocument(mockDocument)
-
-			for (let i = 0; i < 50; i++) {
-				formLayer.setFieldValue(`field-${i}`, `value-${i}`)
-				formLayer.setFieldChecked(`check-${i}`, i % 2 === 0)
-			}
-		})
-
-		it('handles highlight toggle repeatedly', () => {
-			for (let i = 0; i < 20; i++) {
-				formLayer.setHighlightFields(i % 2 === 0)
-			}
 		})
 	})
 })

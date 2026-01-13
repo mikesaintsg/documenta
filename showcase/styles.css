@@ -510,20 +510,30 @@ body {
 	top: 0;
 	left: 0;
 	cursor: text;
+	pointer-events: auto;
+	--text-selection-color: rgba(37, 99, 235, 0.4);
 }
 
-.documenta-text-layer::selection {
-	background-color: var(--selection-color, rgba(37, 99, 235, 0.3));
+/* Text selection highlighting - works with transparent text */
+.documenta-text-layer *::selection {
+	background-color: var(--text-selection-color);
+}
+
+.documenta-text-span {
+	/* Ensure spans are selectable */
+	user-select: text;
+	-webkit-user-select: text;
 }
 
 .documenta-text-span::selection {
-	background-color: var(--selection-color, rgba(37, 99, 235, 0.3));
+	background-color: var(--text-selection-color);
 }
 
 .documenta-drawing-layer {
 	position: absolute;
 	top: 0;
 	left: 0;
+	pointer-events: auto;
 }
 
 /* ============================================================================
